@@ -1,0 +1,52 @@
+{
+  "norb": 6,
+  "nelec": [
+    3,
+    3
+  ],
+  "optimize": false,
+  "basis": "6-31g",
+  "geometry": [
+    [
+      "N",
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    [
+      "N",
+      [
+        0.0,
+        0.0,
+        1.098
+      ]
+    ]
+  ],
+  "hf_energy": -108.86774634695117,
+  "ccsd_energy": -108.94591139869935,
+  "ccsd_correlation_energy": -0.07816505174819025,
+  "ccsd_converged": true,
+  "casci_reference_energy": -108.94671594239263,
+  "ffsim_version": "0.0.83",
+  "qiskit_version": "2.5.2",
+  "qiskit_aer_version": "0.17.2",
+  "fcidump_path": "outputs/n2_cas66.fcidump",
+  "bit_order_convention": "qiskit little-endian: qubit 0 is the rightmost character of the measurement string. Alpha spin-orbitals -> qubits 0..norb-1, beta spin-orbitals -> qubits norb..2*norb-1.",
+  "exact_wavefunction": {
+    "ci_space_dimension": 400,
+    "weight_on_top_determinant": 0.9392671784118142,
+    "n_det_90pct": 1,
+    "n_det_99pct": 16,
+    "n_det_999pct": 24,
+    "casci_energy": -108.94671594239263
+  },
+  "n_reps_requested": null,
+  "n_reps_actual": 18,
+  "interaction_pairs": null,
+  "circuit_depth": 517,
+  "two_qubit_gate_count": 1720,
+  "variational_energy": -108.9454183878899,
+  "ansatz_variant": "unmasked"
+}

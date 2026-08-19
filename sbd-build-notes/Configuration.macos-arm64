@@ -1,0 +1,11 @@
+# Path to the SBD library
+SBD_PATH=../..
+
+# MPI C++ compiler wrapper (conda openmpi)
+CCCOM=mpicxx
+
+# CPU-only build, Apple Silicon (arm64), conda clang + llvm-openmp
+CCFLAGS = -O3 -std=c++17 -fopenmp -DSBD_TRADMODE
+
+# Link line: OpenMP runtime + macOS Accelerate for LAPACK/BLAS
+SYSLIB = -L/Users/maxim/miniforge3/envs/sqd/lib -lomp -framework Accelerate

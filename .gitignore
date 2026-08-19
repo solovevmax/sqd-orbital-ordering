@@ -1,0 +1,18 @@
+# Someone else's repository
+sbd/
+
+# Environments
+sqd-env/
+.venv/
+
+# Python cruft
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Regenerable circuit files
+*.qpy
+Miniforge3-*.sh

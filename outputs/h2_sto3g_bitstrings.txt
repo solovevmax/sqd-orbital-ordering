@@ -1,0 +1,9 @@
+# norb=2 nelec=[1, 1] total_shots=1000000
+# source_qpy=outputs/h2_sto3g_lucj.qpy
+# bit_order_mode=qiskit
+# convention: qiskit little-endian (qubit 0 = rightmost char); alpha=qubits[0:norb], beta=qubits[norb:2*norb] (see stage2.convert_bit_order for other modes)
+# <bitstring> <count>
+0101 998459
+1010 766
+0110 390
+1001 385

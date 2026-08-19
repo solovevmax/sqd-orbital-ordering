@@ -1,0 +1,37 @@
+{
+  "norb": 2,
+  "nelec": [
+    1,
+    1
+  ],
+  "source_bitstring_file": "outputs/h2_sto3g_bitstrings.txt",
+  "default_transform": "split",
+  "max_determinants": null,
+  "write_bdetfile": true,
+  "variants": {
+    "split": {
+      "mode": "split",
+      "adet_path": "outputs/h2_sto3g_adets.txt",
+      "bdet_path": "outputs/h2_sto3g_bdets.txt",
+      "alpha_selection": {
+        "n_available": 2,
+        "n_kept": 2,
+        "kept_weight_fraction": 1.0
+      },
+      "beta_selection": {
+        "n_available": 2,
+        "n_kept": 2,
+        "kept_weight_fraction": 1.0
+      },
+      "diagnostics": {
+        "n_unique_full_bitstrings": 4,
+        "n_alpha_determinants": 2,
+        "n_beta_determinants": 2,
+        "product_space_dimension": 4,
+        "product_dim_over_unique_full_ratio": 1.0,
+        "full_ci_space_dimension": 4,
+        "product_space_pct_of_full_ci": 100.0
+      }
+    }
+  }
+}

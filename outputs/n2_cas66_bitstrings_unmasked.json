@@ -1,6 +1,6 @@
 {
   "total_shots": 1000000,
-  "unique_bitstrings": 78,
+  "unique_bitstrings": 71,
   "top_bitstrings": [
     {
       "bitstring": "000111000111",
@@ -8,14 +8,24 @@
       "probability": 0.94077
     },
     {
-      "bitstring": "001011001011",
-      "count": 8965,
-      "probability": 0.008965
+      "bitstring": "001101001101",
+      "count": 14021,
+      "probability": 0.014021
     },
     {
-      "bitstring": "010101010101",
-      "count": 8929,
-      "probability": 0.008929
+      "bitstring": "010011010011",
+      "count": 13972,
+      "probability": 0.013972
+    },
+    {
+      "bitstring": "010011001101",
+      "count": 6121,
+      "probability": 0.006121
+    },
+    {
+      "bitstring": "001101010011",
+      "count": 5861,
+      "probability": 0.005861
     },
     {
       "bitstring": "000111011001",
@@ -28,29 +38,19 @@
       "probability": 0.003319
     },
     {
-      "bitstring": "010101001011",
-      "count": 2802,
-      "probability": 0.002802
+      "bitstring": "001110001110",
+      "count": 1258,
+      "probability": 0.001258
     },
     {
-      "bitstring": "001011010101",
-      "count": 2749,
-      "probability": 0.002749
+      "bitstring": "010110010110",
+      "count": 1228,
+      "probability": 0.001228
     },
     {
       "bitstring": "010011010101",
-      "count": 2627,
-      "probability": 0.002627
-    },
-    {
-      "bitstring": "010011001011",
-      "count": 2539,
-      "probability": 0.002539
-    },
-    {
-      "bitstring": "001011010011",
-      "count": 2490,
-      "probability": 0.00249
+      "count": 809,
+      "probability": 0.000809
     }
   ],
   "top1_bitstring": "000111000111",

@@ -14,23 +14,23 @@
       "adet_path": "outputs/n2_cas66_adets.txt",
       "bdet_path": "outputs/n2_cas66_bdets.txt",
       "alpha_selection": {
-        "n_available": 16,
-        "n_kept": 16,
-        "kept_weight_fraction": 1.0
-      },
-      "beta_selection": {
         "n_available": 15,
         "n_kept": 15,
         "kept_weight_fraction": 1.0
       },
+      "beta_selection": {
+        "n_available": 14,
+        "n_kept": 14,
+        "kept_weight_fraction": 1.0
+      },
       "diagnostics": {
         "n_unique_full_bitstrings": 50,
-        "n_alpha_determinants": 16,
-        "n_beta_determinants": 15,
-        "product_space_dimension": 240,
-        "product_dim_over_unique_full_ratio": 4.8,
+        "n_alpha_determinants": 15,
+        "n_beta_determinants": 14,
+        "product_space_dimension": 210,
+        "product_dim_over_unique_full_ratio": 4.2,
         "full_ci_space_dimension": 400,
-        "product_space_pct_of_full_ci": 60.0
+        "product_space_pct_of_full_ci": 52.5
       }
     }
   }

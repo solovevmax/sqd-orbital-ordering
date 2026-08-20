@@ -4,57 +4,57 @@
   "top_bitstrings": [
     {
       "bitstring": "000111000111",
-      "count": 993991,
-      "probability": 0.993991
+      "count": 994301,
+      "probability": 0.994301
     },
     {
       "bitstring": "011001000111",
-      "count": 817,
-      "probability": 0.000817
+      "count": 811,
+      "probability": 0.000811
     },
     {
       "bitstring": "000111011001",
-      "count": 805,
-      "probability": 0.000805
-    },
-    {
-      "bitstring": "000111010011",
-      "count": 558,
-      "probability": 0.000558
-    },
-    {
-      "bitstring": "010011000111",
-      "count": 545,
-      "probability": 0.000545
-    },
-    {
-      "bitstring": "001101001101",
-      "count": 426,
-      "probability": 0.000426
-    },
-    {
-      "bitstring": "010101010101",
-      "count": 393,
-      "probability": 0.000393
+      "count": 790,
+      "probability": 0.00079
     },
     {
       "bitstring": "010011010011",
-      "count": 314,
-      "probability": 0.000314
+      "count": 732,
+      "probability": 0.000732
     },
     {
-      "bitstring": "001011001011",
-      "count": 195,
-      "probability": 0.000195
+      "bitstring": "001101001101",
+      "count": 717,
+      "probability": 0.000717
     },
     {
-      "bitstring": "010011001011",
-      "count": 189,
-      "probability": 0.000189
+      "bitstring": "000111010011",
+      "count": 455,
+      "probability": 0.000455
+    },
+    {
+      "bitstring": "010011000111",
+      "count": 408,
+      "probability": 0.000408
+    },
+    {
+      "bitstring": "000111001011",
+      "count": 139,
+      "probability": 0.000139
+    },
+    {
+      "bitstring": "001011000111",
+      "count": 136,
+      "probability": 0.000136
+    },
+    {
+      "bitstring": "001011010011",
+      "count": 112,
+      "probability": 0.000112
     }
   ],
   "top1_bitstring": "000111000111",
-  "top1_fraction": 0.993991,
+  "top1_fraction": 0.994301,
   "particle_number_check": {
     "pct_total_correct": 100.0,
     "pct_alpha_correct": 100.0,

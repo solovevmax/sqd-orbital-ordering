@@ -24,11 +24,11 @@
       ]
     ]
   ],
-  "hf_energy": -108.86774634695117,
-  "ccsd_energy": -108.94591139869935,
-  "ccsd_correlation_energy": -0.07816505174819025,
+  "hf_energy": -108.8677463469512,
+  "ccsd_energy": -108.94591139769356,
+  "ccsd_correlation_energy": -0.07816505074237654,
   "ccsd_converged": true,
-  "casci_reference_energy": -108.94671594239263,
+  "casci_reference_energy": -108.94671594239266,
   "ffsim_version": "0.0.83",
   "qiskit_version": "2.5.2",
   "qiskit_aer_version": "0.17.2",
@@ -38,15 +38,15 @@
     "ci_space_dimension": 400,
     "weight_on_top_determinant": 0.9392671784118142,
     "n_det_90pct": 1,
-    "n_det_99pct": 16,
-    "n_det_999pct": 24,
-    "casci_energy": -108.94671594239263
+    "n_det_99pct": 10,
+    "n_det_999pct": 25,
+    "casci_energy": -108.94671594239266
   },
   "n_reps_requested": null,
   "n_reps_actual": 18,
   "interaction_pairs": null,
   "circuit_depth": 517,
   "two_qubit_gate_count": 1720,
-  "variational_energy": -108.9454183878899,
+  "variational_energy": -108.94541838808348,
   "ansatz_variant": "unmasked"
 }

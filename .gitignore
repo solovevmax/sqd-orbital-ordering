@@ -16,3 +16,11 @@ __pycache__/
 # Regenerable circuit files
 *.qpy
 Miniforge3-*.sh
+
+# Development artefacts, kept locally only
+archive/
+outputs/ordering/
+outputs/sweep/
+sqd-env/
+Miniforge3-*.sh
+.DS_Store

@@ -1,0 +1,19 @@
+END-WEIGHTED MASK QUICK CHECK (3 orderings)
+H10 R=1.6 Å | shots=500000 | seeds=(2026, 7) | mask_mode=end_weighted
+[boys] ew-occ: 5 orbs, unitary 2.2e-15, span 5.6e-16
+[boys] ew-vir: 5 orbs, unitary 3.1e-15, span 7.8e-16
+physical           seed=2026 err=299.12 mHa
+physical           seed=7 err=299.12 mHa
+physical_reverse   seed=2026 err=299.12 mHa
+physical_reverse   seed=7 err=299.12 mHa
+random_999         seed=2026 err=181.15 mHa
+random_999         seed=7 err=229.31 mHa
+
+SUMMARY
+        ordering  mean_err_mHa  sd_err_mHa
+        physical       299.119       0.000
+physical_reverse       299.119       0.000
+      random_999       205.230      34.057
+
+Results: outputs/h10_end_weighted_quick/results.csv
+Summary: outputs/h10_end_weighted_quick/summary.csv

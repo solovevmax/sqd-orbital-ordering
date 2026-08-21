@@ -1,0 +1,11 @@
+
+==============================================================================
+STAGE 3 -- H10 chain, STO-6G, CAS(10e,10o), R = 1.8 A
+==============================================================================
+WARNING: H10 CCSD did not fully converge. The LUCJ initial state is still well-defined but record this in the metadata.
+[h10 ] norb=10 nelec=(5, 5) E_RHF=-4.230357393921 E_corr=-0.783765085576
+[boys] h10-occ: 5 orbs, unitary 3.3e-15, span 1.1e-15
+[boys] h10-vir: 5 orbs, unitary 1.5e-15, span 6.1e-16
+[chk ] E_corr from amplitudes: canonical -0.783765085391  localized -0.783765085391  diff 1.44e-15
+[chk ] CASCI canonical -4.858523220955  localized -4.858523172783  diff 4.82e-08
+FATAL: CASCI energies differ -- not the same active space.

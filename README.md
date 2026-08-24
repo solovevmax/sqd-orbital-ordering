@@ -127,6 +127,9 @@ full CI space.
 
 For building the external sbd library on macOS, see `sbd-build-notes/`.
 
+Run `pytest tests/` to check that mechanism A (`unified_run.py`) and mechanism
+B (`run_ordering_pipeline.py`) still build entrywise-identical operators.
+
 ## References
 
 1. J. Robledo-Moreno *et al.*, *Sci. Adv.* **11**, eadu9991 (2025);

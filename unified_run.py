@@ -128,28 +128,8 @@ def hill_climb(score, n_restarts=25):
         if cur_s>best_s: best,best_s=cur,cur_s
     return best
 
-print("Optimising...")
-t0=time.time()
-best_J   = hill_climb(retained_J_of, 25)
-best_cap = hill_climb(captured_of, 12)
-print(f"  max_retainedJ       {''.join(map(str,best_J))}")
-print(f"  max_captured_ORACLE {''.join(map(str,best_cap))}   ({time.time()-t0:.0f}s)\n")
-
-named = {"identity": np.arange(NORB),
-         "reverse": np.arange(NORB)[::-1],
-         "max_retainedJ": best_J,
-         "max_captured_ORACLE": best_cap}
-
-randoms = {}
-seen = {tuple(range(NORB))}
-while len(randoms) < N_RANDOM:
-    p = rng.permutation(NORB)
-    if tuple(p) not in seen:
-        seen.add(tuple(p)); randoms[f"r{len(randoms):03d}"] = p
-
 # ------------------------------------------------------------- evaluation
 HF_DET = "0"*(NORB-NELEC[0]) + "1"*NELEC[0]
-
 def run_sbd(a,b):
     r = subprocess.run(["mpirun","-np","1",str(SBD),"--fcidump",str(FCIDUMP),
         "--adetfile",str(a),"--bdetfile",str(b),"--method","0",
@@ -161,10 +141,10 @@ def run_sbd(a,b):
     if not m: raise RuntimeError((r.stdout+r.stderr)[-1000:])
     return float(m.group(1))
 
-def evaluate(name, perm, kind):
+def evaluate(name, perm, kind, seeds=SEEDS):
     op_m = apply_mask(permute_operator(op_full, perm))
     out=[]
-    for seed in SEEDS:
+    for seed in seeds:
         q=QuantumRegister(2*NORB,"q"); qc=QuantumCircuit(q)
         qc.append(ffsim.qiskit.PrepareHartreeFockJW(NORB,NELEC),q)
         qc.append(ffsim.qiskit.UCJOpSpinBalancedJW(op_m),q); qc.measure_all()
@@ -191,40 +171,60 @@ def evaluate(name, perm, kind):
                     "top1":max(counts.values())/SHOTS})
     return out
 
-rows=[]; t0=time.time(); todo=list(named.items())+list(randoms.items())
-for i,(name,perm) in enumerate(todo,1):
-    kind = "named" if name in named else "random"
-    rows += evaluate(name, perm, kind)
-    if i%10==0 or i<=4:
-        el=time.time()-t0
-        print(f"[{i:3d}/{len(todo)}] {name:20s} "
-              f"{rows[-1]['err_sub_mHa']:7.2f} mHa  "
-              f"eta {el/i*(len(todo)-i)/60:.0f}m", flush=True)
-        pd.DataFrame(rows).to_csv(WORK/"results.csv", index=False)
+if __name__ == "__main__":
+    print("Optimising...")
+    t0=time.time()
+    best_J   = hill_climb(retained_J_of, 25)
+    best_cap = hill_climb(captured_of, 12)
+    print(f"  max_retainedJ       {''.join(map(str,best_J))}")
+    print(f"  max_captured_ORACLE {''.join(map(str,best_cap))}   ({time.time()-t0:.0f}s)\n")
 
-df=pd.DataFrame(rows); df.to_csv(WORK/"results.csv", index=False)
-assert df.dim.nunique()==1, f"budget varied: {sorted(df.dim.unique())}"
-print(f"\nDone in {(time.time()-t0)/60:.1f} min, dim constant at {df.dim.iloc[0]}")
+    named = {"identity": np.arange(NORB),
+             "reverse": np.arange(NORB)[::-1],
+             "max_retainedJ": best_J,
+             "max_captured_ORACLE": best_cap}
 
-# --------------------------------------------------------------- analysis
-summ = df.groupby(["kind","ordering"]).agg(
-    mean_err=("err_sub_mHa","mean"), sd=("err_sub_mHa","std"),
-    retained_J=("retained_J","first"), captured=("captured","first")).reset_index()
-base = summ[summ.kind=="random"]["mean_err"]
+    randoms = {}
+    seen = {tuple(range(NORB))}
+    while len(randoms) < N_RANDOM:
+        p = rng.permutation(NORB)
+        if tuple(p) not in seen:
+            seen.add(tuple(p)); randoms[f"r{len(randoms):03d}"] = p
 
-print("\n"+"="*76)
-print(f"random baseline (n={len(base)}): best {base.min():.2f}, "
-      f"median {base.median():.2f}, worst {base.max():.2f} | "
-      f"top-decile {base.quantile(0.10):.2f} mHa")
-print("="*76)
-named_s = summ[summ.kind=="named"].copy()
-named_s["percentile"]  = [100*(base<e).mean() for e in named_s.mean_err]
-named_s["rank_of_base"]= [(base<e).sum()+1 for e in named_s.mean_err]
-print(named_s.sort_values("mean_err").round(4).to_string(index=False))
+    rows=[]; t0=time.time(); todo=list(named.items())+list(randoms.items())
+    for i,(name,perm) in enumerate(todo,1):
+        kind = "named" if name in named else "random"
+        rows += evaluate(name, perm, kind)
+        if i%10==0 or i<=4:
+            el=time.time()-t0
+            print(f"[{i:3d}/{len(todo)}] {name:20s} "
+                  f"{rows[-1]['err_sub_mHa']:7.2f} mHa  "
+                  f"eta {el/i*(len(todo)-i)/60:.0f}m", flush=True)
+            pd.DataFrame(rows).to_csv(WORK/"results.csv", index=False)
 
-from scipy.stats import spearmanr
-print("\nAcross random orderings, Spearman vs subspace error:")
-rnd = summ[summ.kind=="random"]
-for c in ["captured","retained_J"]:
-    r=spearmanr(rnd[c], rnd.mean_err)
-    print(f"  {c:12s} rho = {r.statistic:+.3f}  p = {r.pvalue:.2e}")
+    df=pd.DataFrame(rows); df.to_csv(WORK/"results.csv", index=False)
+    assert df.dim.nunique()==1, f"budget varied: {sorted(df.dim.unique())}"
+    print(f"\nDone in {(time.time()-t0)/60:.1f} min, dim constant at {df.dim.iloc[0]}")
+
+    # --------------------------------------------------------------- analysis
+    summ = df.groupby(["kind","ordering"]).agg(
+        mean_err=("err_sub_mHa","mean"), sd=("err_sub_mHa","std"),
+        retained_J=("retained_J","first"), captured=("captured","first")).reset_index()
+    base = summ[summ.kind=="random"]["mean_err"]
+
+    print("\n"+"="*76)
+    print(f"random baseline (n={len(base)}): best {base.min():.2f}, "
+          f"median {base.median():.2f}, worst {base.max():.2f} | "
+          f"top-decile {base.quantile(0.10):.2f} mHa")
+    print("="*76)
+    named_s = summ[summ.kind=="named"].copy()
+    named_s["percentile"]  = [100*(base<e).mean() for e in named_s.mean_err]
+    named_s["rank_of_base"]= [(base<e).sum()+1 for e in named_s.mean_err]
+    print(named_s.sort_values("mean_err").round(4).to_string(index=False))
+
+    from scipy.stats import spearmanr
+    print("\nAcross random orderings, Spearman vs subspace error:")
+    rnd = summ[summ.kind=="random"]
+    for c in ["captured","retained_J"]:
+        r=spearmanr(rnd[c], rnd.mean_err)
+        print(f"  {c:12s} rho = {r.statistic:+.3f}  p = {r.pvalue:.2e}")

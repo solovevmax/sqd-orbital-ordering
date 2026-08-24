@@ -10,7 +10,7 @@ import os
 for v in ("OMP_NUM_THREADS","MKL_NUM_THREADS","OPENBLAS_NUM_THREADS"):
     os.environ.setdefault(v, "1")
 
-import re, subprocess, time, hashlib, pickle
+import re, subprocess, sys, time, hashlib, pickle
 from collections import Counter
 from itertools import combinations
 from math import comb
@@ -22,6 +22,9 @@ import ffsim
 from pyscf.fci import cistring
 from qiskit import QuantumCircuit, QuantumRegister, transpile
 from qiskit_aer import AerSimulator
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+from sqd_ordering import mask
 
 # ----------------------------------------------------------------- config
 BOND, BASIS = 1.55, "6-31g"
@@ -36,7 +39,6 @@ CACHE = WORK/"reference.pkl"
 FCIDUMP = WORK/"reference.fcidump"
 SBD = ROOT/"sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag"
 DIM_A, DIM_B = comb(NORB,NELEC[0]), comb(NORB,NELEC[1])
-AB = list(range(0, NORB, 4))
 
 # ------------------------------------------------- reference data (cached)
 if CACHE.exists():
@@ -73,11 +75,13 @@ print(f"t2 md5      {hashlib.md5(np.ascontiguousarray(ref_data['t2'])).hexdigest
 op_full = ffsim.UCJOpSpinBalanced.from_t_amplitudes(
     t2=ref_data["t2"], t1=ref_data["t1"], n_reps=None)
 
-_m_aa = np.zeros((NORB,NORB),bool)
-for p in range(NORB-1): _m_aa[p,p+1]=_m_aa[p+1,p]=True
-np.fill_diagonal(_m_aa, True)
-_m_ab = np.zeros((NORB,NORB),bool)
-for p in AB: _m_ab[p,p]=True
+# Fixed mask, applied to the PERMUTED operator (so position k here always
+# means "post-permutation position k" - see permute_operator). Equivalent to
+# mask.mask_matrices(pos=identity, NORB): nearest-neighbour + same-spin
+# diagonal (aa), on-site anchors every anchor_mod=4th position (ab). Sourced
+# from src/sqd_ordering/mask.py so this can never again silently diverge
+# from run_ordering_pipeline.py's H10 mask.
+_m_aa, _m_ab = mask.mask_matrices(np.arange(NORB), NORB)
 
 def permute_operator(op, perm):
     P = np.eye(op.norb)[list(perm)]
@@ -99,9 +103,8 @@ def apply_mask(op):
 
 def retained_J_of(perm):
     J = np.asarray(permute_operator(op_full, perm).diag_coulomb_mats)
-    tot  = np.sum(J[:,0]**2)+np.sum(J[:,1]**2)
-    kept = np.sum((J[:,0]*_m_aa)**2)+np.sum((J[:,1]*_m_ab)**2)
-    return float(kept/tot)
+    # masking happens in the PERMUTED frame at fixed positions, so pos=identity
+    return mask.retained_J(np.arange(NORB), J[:, 0], J[:, 1])
 
 def captured_of(perm):
     psi = ffsim.apply_unitary(ref, apply_mask(permute_operator(op_full, perm)),

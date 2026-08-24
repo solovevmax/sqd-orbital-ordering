@@ -52,10 +52,14 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr, pearsonr, kendalltau
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+from sqd_ordering import mask
 
 HARTREE_TO_MHA = 1000.0
 
@@ -152,21 +156,24 @@ def positions_from(perm, convention="layout"):
 
 
 def same_spin_pairs(pos):
-    inv = np.argsort(pos)                       # inv[k] = orbital at position k
-    return [(int(inv[k]), int(inv[k + 1])) for k in range(len(pos) - 1)]
+    """Delegates to src/sqd_ordering/mask.py (single source of truth: nearest-
+    neighbour pairs PLUS the same-spin diagonal - see that module's docstring
+    for why the diagonal is mandatory)."""
+    return sorted(mask.same_spin_pairs(pos, len(pos)))
 
 
 def opp_spin_sites(pos, centroids=None, mode="pos", J_ab=None):
-    # positional mask (default, used in stage1 and as fallback)
+    # positional mask (default, used in stage1 and as fallback) - delegates
+    # to src/sqd_ordering/mask.py
     if centroids is None or mode == "pos":
-        return [int(p) for p in range(len(pos)) if pos[p] % CFG["anchor_mod"] == 0]
+        return sorted({p for p, _ in mask.opp_spin_pairs(pos, len(pos), anchor_mod=CFG["anchor_mod"])})
 
     # centered mask path (only if centroids provided and mode != "pos")
     # J_ab is ignored here but kept for API compatibility
     assert hasattr(centroids, "__len__"), "centroids must be array-like"
     # TODO: implement your centered-mask logic using centroids here
     # For now, fall back to positional to avoid breaking stage3:
-    return [int(p) for p in range(len(pos)) if pos[p] % CFG["anchor_mod"] == 0]
+    return sorted({p for p, _ in mask.opp_spin_pairs(pos, len(pos), anchor_mod=CFG["anchor_mod"])})
 
 
 
@@ -216,18 +223,9 @@ def interaction_pairs_for(pos, centroids=None, J_ab=None):
     return list(aa), list(ab)
 
 
-def _opp_spin_sites_anchor(pos):
-    """Legacy anchor-based opposite-spin sites, used for retained_J scalar."""
-    return [int(p) for p in range(len(pos)) if pos[p] % CFG["anchor_mod"] == 0]
-
-
 def retained_J_of(pos, J_aa, J_ab):
-    tot = np.abs(J_aa).sum() + np.abs(J_ab).sum()
-    if tot <= 0:
-        return 0.0
-    keep = sum(2.0 * np.abs(J_aa[:, p, q]).sum() for p, q in same_spin_pairs(pos))
-    keep += sum(np.abs(J_ab[:, p, p]).sum() for p in _opp_spin_sites_anchor(pos))
-    return float(keep / tot)
+    """Delegates to src/sqd_ordering/mask.py (single source of truth)."""
+    return mask.retained_J(pos, J_aa, J_ab)
 
 
 def parse_permutation(value, norb):

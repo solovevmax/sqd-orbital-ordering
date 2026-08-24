@@ -47,37 +47,54 @@ def same_spin_pairs(pos: np.ndarray, norb: int) -> set[tuple[int, int]]:
     return pairs
 
 
-def opp_spin_pairs(pos: np.ndarray, norb: int, anchor_mod: int = 4) -> set[tuple[int, int]]:
+def opp_spin_pairs(
+    pos: np.ndarray, norb: int, anchor_mod: int = 4, anchor_offset: int = 0,
+    anchor_orbitals=None,
+) -> set[tuple[int, int]]:
     """Opposite-spin (ab) Jastrow entries the mask retains: on-site (p, p)
-    terms for orbitals whose LAYOUT POSITION is a multiple of `anchor_mod`.
+    terms for orbitals whose LAYOUT POSITION is congruent to `anchor_offset`
+    modulo `anchor_mod` (default offset 0 - the original, unchanged
+    behaviour). If `anchor_orbitals` is given (an iterable of ORBITAL
+    indices, not positions), it is used directly instead - free selection
+    of which orbitals anchor, independent of any arithmetic-progression
+    positional pattern.
     """
+    if anchor_orbitals is not None:
+        return {(int(p), int(p)) for p in anchor_orbitals}
     inv = _orbital_at_position(pos)
-    return {(int(inv[k]), int(inv[k])) for k in range(0, norb, anchor_mod)}
+    return {(int(inv[k]), int(inv[k])) for k in range(anchor_offset % anchor_mod, norb, anchor_mod)}
 
 
 def mask_matrices(
-    pos: np.ndarray, norb: int, anchor_mod: int = 4
+    pos: np.ndarray, norb: int, anchor_mod: int = 4, anchor_offset: int = 0,
+    anchor_orbitals=None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Boolean (norb, norb) same-spin and opposite-spin masks for `pos`."""
     m_aa = np.zeros((norb, norb), dtype=bool)
     for p, q in same_spin_pairs(pos, norb):
         m_aa[p, q] = m_aa[q, p] = True
     m_ab = np.zeros((norb, norb), dtype=bool)
-    for p, q in opp_spin_pairs(pos, norb, anchor_mod=anchor_mod):
+    for p, q in opp_spin_pairs(pos, norb, anchor_mod=anchor_mod, anchor_offset=anchor_offset,
+                               anchor_orbitals=anchor_orbitals):
         m_ab[p, q] = m_ab[q, p] = True
     return m_aa, m_ab
 
 
 def interaction_pairs_for(
-    pos: np.ndarray, norb: int, anchor_mod: int = 4
+    pos: np.ndarray, norb: int, anchor_mod: int = 4, anchor_offset: int = 0,
+    anchor_orbitals=None,
 ) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     """(pairs_aa, pairs_ab) for ffsim's interaction_pairs: normalised p <= q, deduped."""
     aa = sorted(same_spin_pairs(pos, norb))
-    ab = sorted(opp_spin_pairs(pos, norb, anchor_mod=anchor_mod))
+    ab = sorted(opp_spin_pairs(pos, norb, anchor_mod=anchor_mod, anchor_offset=anchor_offset,
+                               anchor_orbitals=anchor_orbitals))
     return list(aa), list(ab)
 
 
-def retained_J(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> float:
+def retained_J(
+    pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray, anchor_mod: int = 4,
+    anchor_offset: int = 0, anchor_orbitals=None,
+) -> float:
     """Fraction of the Jastrow matrices' squared magnitude the mask retains.
 
     A STRUCTURAL, pre-sampling property of the ansatz. Matches
@@ -88,7 +105,8 @@ def retained_J(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> float:
     J_aa = np.asarray(J_aa)
     J_ab = np.asarray(J_ab)
     norb = J_aa.shape[-1]
-    m_aa, m_ab = mask_matrices(pos, norb)
+    m_aa, m_ab = mask_matrices(pos, norb, anchor_mod=anchor_mod, anchor_offset=anchor_offset,
+                               anchor_orbitals=anchor_orbitals)
     total = np.sum(J_aa ** 2) + np.sum(J_ab ** 2)
     if total <= 0:
         return 0.0
@@ -96,7 +114,10 @@ def retained_J(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> float:
     return float(kept / total)
 
 
-def retained_J_split(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> tuple[float, float]:
+def retained_J_split(
+    pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray, anchor_mod: int = 4,
+    anchor_offset: int = 0, anchor_orbitals=None,
+) -> tuple[float, float]:
     """retained_J's same-spin and opposite-spin sectors reported separately,
     each normalised by its OWN total squared magnitude (so both are
     fractions in [0, 1], not a further split of the combined fraction).
@@ -104,7 +125,8 @@ def retained_J_split(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> tup
     J_aa = np.asarray(J_aa)
     J_ab = np.asarray(J_ab)
     norb = J_aa.shape[-1]
-    m_aa, m_ab = mask_matrices(pos, norb)
+    m_aa, m_ab = mask_matrices(pos, norb, anchor_mod=anchor_mod, anchor_offset=anchor_offset,
+                               anchor_orbitals=anchor_orbitals)
     tot_aa = np.sum(J_aa ** 2)
     tot_ab = np.sum(J_ab ** 2)
     same = float(np.sum((J_aa * m_aa) ** 2) / tot_aa) if tot_aa > 0 else 0.0

@@ -162,18 +162,22 @@ def same_spin_pairs(pos):
     return sorted(mask.same_spin_pairs(pos, len(pos)))
 
 
-def opp_spin_sites(pos, centroids=None, mode="pos", J_ab=None):
+def opp_spin_sites(pos, centroids=None, mode="pos", J_ab=None, anchor_offset=0, anchor_orbitals=None):
     # positional mask (default, used in stage1 and as fallback) - delegates
     # to src/sqd_ordering/mask.py
     if centroids is None or mode == "pos":
-        return sorted({p for p, _ in mask.opp_spin_pairs(pos, len(pos), anchor_mod=CFG["anchor_mod"])})
+        return sorted({p for p, _ in mask.opp_spin_pairs(
+            pos, len(pos), anchor_mod=CFG["anchor_mod"], anchor_offset=anchor_offset,
+            anchor_orbitals=anchor_orbitals)})
 
     # centered mask path (only if centroids provided and mode != "pos")
     # J_ab is ignored here but kept for API compatibility
     assert hasattr(centroids, "__len__"), "centroids must be array-like"
     # TODO: implement your centered-mask logic using centroids here
     # For now, fall back to positional to avoid breaking stage3:
-    return sorted({p for p, _ in mask.opp_spin_pairs(pos, len(pos), anchor_mod=CFG["anchor_mod"])})
+    return sorted({p for p, _ in mask.opp_spin_pairs(
+        pos, len(pos), anchor_mod=CFG["anchor_mod"], anchor_offset=anchor_offset,
+        anchor_orbitals=anchor_orbitals)})
 
 
 
@@ -216,21 +220,25 @@ def _largest_J_ab_opp_spin_sites(pos, J_ab, k):
     return [int(i) for i in idx[:k]]
 
 
-def interaction_pairs_for(pos, centroids=None, J_ab=None):
+def interaction_pairs_for(pos, centroids=None, J_ab=None, anchor_offset=0, anchor_orbitals=None):
     """(pairs_aa, pairs_ab) for ffsim, normalised to p <= q and deduped."""
     aa = sorted({tuple(sorted(pq)) for pq in same_spin_pairs(pos)})
-    ab = sorted((p, p) for p in opp_spin_sites(pos, centroids=centroids, J_ab=J_ab))
+    ab = sorted((p, p) for p in opp_spin_sites(pos, centroids=centroids, J_ab=J_ab,
+                                               anchor_offset=anchor_offset,
+                                               anchor_orbitals=anchor_orbitals))
     return list(aa), list(ab)
 
 
-def retained_J_of(pos, J_aa, J_ab):
+def retained_J_of(pos, J_aa, J_ab, anchor_offset=0, anchor_orbitals=None):
     """Delegates to src/sqd_ordering/mask.py (single source of truth)."""
-    return mask.retained_J(pos, J_aa, J_ab)
+    return mask.retained_J(pos, J_aa, J_ab, anchor_offset=anchor_offset,
+                           anchor_orbitals=anchor_orbitals)
 
 
-def retained_J_split_of(pos, J_aa, J_ab):
+def retained_J_split_of(pos, J_aa, J_ab, anchor_offset=0, anchor_orbitals=None):
     """Delegates to src/sqd_ordering/mask.py (single source of truth)."""
-    return mask.retained_J_split(pos, J_aa, J_ab)
+    return mask.retained_J_split(pos, J_aa, J_ab, anchor_offset=anchor_offset,
+                                 anchor_orbitals=anchor_orbitals)
 
 
 def parse_permutation(value, norb):

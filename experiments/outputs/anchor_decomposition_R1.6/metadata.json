@@ -1,0 +1,45 @@
+{
+  "part": "B",
+  "git_commit": "628451054dded26297ace8f1fb5f989c772a896d",
+  "shots": 2000000,
+  "b1_seeds": [
+    2026,
+    7
+  ],
+  "b2_seed": 2026,
+  "b2_rng_seed": 20260825001,
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "baseline_csv_sha256": "28af06cfd6c5084e2a1cbfe82cb787fbb332a8afe7af3565c9e41a7dda093f25",
+  "b0_reversal_invariant": "57/57",
+  "b1_orderings": [
+    "identity",
+    "physical",
+    "physical_reverse",
+    "s2_max"
+  ],
+  "b1_ranges": {
+    "identity": 162.77026063068422,
+    "physical": 171.0770816812657,
+    "physical_reverse": 171.0770816812657,
+    "s2_max": 136.72883604757578
+  },
+  "b1_best_offsets": {
+    "identity": 1,
+    "physical": 1,
+    "physical_reverse": 0,
+    "s2_max": 0
+  },
+  "b2_n_triples_total": 120,
+  "b2_n_sampled": 30,
+  "b2_range": 234.10076195010453,
+  "b2_rho_captured": -0.8403592285931148,
+  "b2_rho_captured_p": 6.26367350435571e-09,
+  "b2_rho_retained_J_oppspin": -0.7643452686707598,
+  "b2_rho_retained_J_oppspin_p": 8.819480724750877e-07,
+  "b2_best_triple": "012",
+  "b2_best_err_mHa": 224.59889961938285,
+  "larger_lever": "free anchor selection (B2)",
+  "b4_skipped": true,
+  "generated": "2026-08-24T15:29:04"
+}

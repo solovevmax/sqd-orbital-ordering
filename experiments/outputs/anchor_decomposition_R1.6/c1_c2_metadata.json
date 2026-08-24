@@ -1,0 +1,46 @@
+{
+  "part": "C1_C2_hardening",
+  "git_commit": "6b3d53417fba464e72558b67ce1511a059a62491",
+  "shots": 2000000,
+  "seed": 2026,
+  "c2_rng_seed": 20260825002,
+  "c2_n_shared": 40,
+  "c2_orderings": [
+    "physical",
+    "physical_reverse",
+    "rand007"
+  ],
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "b2_sampled_csv_sha256": "50aec7565437144f7fa03d6e4ab69e7c3945bc99d818db199a7ef47d146ea3be",
+  "c1_n_reused": 30,
+  "c1_n_new": 90,
+  "c1_rho_oppspin_full120": -0.7774032622270676,
+  "c1_p_oppspin_full120": 1.6333359961432339e-25,
+  "c1_rho_captured_full120": -0.9373158141558016,
+  "c1_p_captured_full120": 7.410380950410343e-56,
+  "c1_rho_oppspin_biased30": -0.7579159795116448,
+  "c1_p_oppspin_biased30": 1.2308166465055958e-06,
+  "c1_rho_captured_biased30": -0.8403592285931148,
+  "c1_p_captured_biased30": 6.26367350435571e-09,
+  "c1_top_pick_triple": "(0, 1, 9)",
+  "c1_top_pick_actual_rank": 32,
+  "c1_selection_regret": 22.67968366126459,
+  "c2_best_triples": {
+    "physical": "(2, 4, 7)",
+    "physical_reverse": "(2, 4, 7)",
+    "rand007": "(3, 5, 9)",
+    "identity": "(0, 1, 3)"
+  },
+  "c2_all_same_best": false,
+  "c2_pairwise_rho": {
+    "identity_vs_physical": 0.2997885046056065,
+    "identity_vs_physical_reverse": 0.2997885046056065,
+    "identity_vs_rand007": 0.5697510537398166,
+    "physical_vs_physical_reverse": 1.0,
+    "physical_vs_rand007": 0.377302327947837,
+    "physical_reverse_vs_rand007": 0.377302327947837
+  },
+  "c2_mean_pairwise_rho": 0.48732211980778395,
+  "generalizes": true,
+  "generated": "2026-08-24T18:29:38"
+}

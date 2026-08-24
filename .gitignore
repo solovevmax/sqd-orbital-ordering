@@ -9,6 +9,7 @@ sqd-env/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
 
 # macOS
 .DS_Store

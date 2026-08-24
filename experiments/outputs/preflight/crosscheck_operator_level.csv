@@ -1,0 +1,6 @@
+perm,n_reps_A,n_reps_B,shape_match,n_pairs_aa_B,n_pairs_ab_B,diff_aa,diff_ab,diff_U,equivalent,ordering
+0123456789,42,42,True,19,3,0.0,0.0,0.0,True,identity
+9876543210,42,42,True,19,3,0.0,0.0,0.0,True,reverse
+8924370156,42,42,True,19,3,0.0,0.0,0.0,True,rand_seed201
+7320956841,42,42,True,19,3,0.0,0.0,0.0,True,rand_seed202
+1056384279,42,42,True,19,3,0.0,0.0,0.0,True,rand_seed203

@@ -144,8 +144,13 @@ def run_sbd(a,b):
     if not m: raise RuntimeError((r.stdout+r.stderr)[-1000:])
     return float(m.group(1))
 
-def evaluate(name, perm, kind, seeds=SEEDS):
-    op_m = apply_mask(permute_operator(op_full, perm))
+def evaluate(name, perm, kind, seeds=SEEDS, op_override=None):
+    """op_override: sample this operator instead of apply_mask(permute_operator(
+    op_full, perm)) - e.g. the UNMASKED permuted operator for the permutation-
+    invariance gate. retained_J/captured are mask-derived diagnostics and are
+    only meaningful (and only computed) for the default masked case.
+    """
+    op_m = op_override if op_override is not None else apply_mask(permute_operator(op_full, perm))
     out=[]
     for seed in seeds:
         q=QuantumRegister(2*NORB,"q"); qc=QuantumCircuit(q)
@@ -165,13 +170,15 @@ def evaluate(name, perm, kind, seeds=SEEDS):
             f.write_text("\n".join(d)+"\n")
             if f is fa: na=len(d)
             else: nb=len(d)
-        out.append({"ordering":name,"kind":kind,"perm":"".join(map(str,perm)),
+        row = {"ordering":name,"kind":kind,"perm":"".join(map(str,perm)),
                     "seed":seed,"dim":na*nb,
                     "err_sub_mHa":(run_sbd(fa,fb)-E_CASCI)*1000,
-                    "retained_J":retained_J_of(perm),
-                    "captured":captured_of(perm),
                     "n_unique":len(counts),
-                    "top1":max(counts.values())/SHOTS})
+                    "top1":max(counts.values())/SHOTS}
+        if op_override is None:
+            row["retained_J"] = retained_J_of(perm)
+            row["captured"] = captured_of(perm)
+        out.append(row)
     return out
 
 if __name__ == "__main__":

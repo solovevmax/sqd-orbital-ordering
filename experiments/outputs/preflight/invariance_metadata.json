@@ -1,0 +1,51 @@
+{
+  "subcommand": "invariance",
+  "shots": 1000000,
+  "seed_simulator": 2026,
+  "orderings": [
+    "identity",
+    "rand_seed101",
+    "rand_seed102",
+    "rand_seed103"
+  ],
+  "git_commit": "b84ff9f00043eacd306384bc64f7b66429adabb7-dirty",
+  "fcidump_sha256": "2eeb9926a0ca17cd388c1c45721dd7964543c73ff8264bed6a342ab6e0da8345",
+  "reference_pkl_sha256": "6ce2a7384b577da403bbd2577d95f6e0862cbf80e3cf371b767f2b939ea03012",
+  "generated": "2026-08-24T10:09:36",
+  "rows": [
+    {
+      "ordering": "identity",
+      "perm": "0123456789",
+      "energy": -108.8236445639776,
+      "delta_Ha": 0.0,
+      "jaccard_alpha": 1.0,
+      "jaccard_beta": 1.0
+    },
+    {
+      "ordering": "rand_seed101",
+      "perm": "5701498362",
+      "energy": -108.8236445639776,
+      "delta_Ha": 0.0,
+      "jaccard_alpha": 1.0,
+      "jaccard_beta": 1.0
+    },
+    {
+      "ordering": "rand_seed102",
+      "perm": "8627109354",
+      "energy": -108.8236445639776,
+      "delta_Ha": 0.0,
+      "jaccard_alpha": 1.0,
+      "jaccard_beta": 1.0
+    },
+    {
+      "ordering": "rand_seed103",
+      "perm": "8407956321",
+      "energy": -108.8236445639776,
+      "delta_Ha": 0.0,
+      "jaccard_alpha": 1.0,
+      "jaccard_beta": 1.0
+    }
+  ],
+  "max_abs_delta_Ha": 0.0,
+  "verdict": "PASS"
+}

@@ -1,0 +1,24 @@
+{
+  "part": "A",
+  "git_commit": "8b23ad36350151c35cf8f7ed1a31c4ac1d69f1da",
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "orderings_json_sha256": "d629289766507b46eda1f45089a7abc6ecca5e346211e767121157df07087c49",
+  "baseline_csv_sha256": "28af06cfd6c5084e2a1cbfe82cb787fbb332a8afe7af3565c9e41a7dda093f25",
+  "n_random": 50,
+  "n_named": 7,
+  "random_selection_regret": 95.00964477637217,
+  "climbed_on": {
+    "s1_max": "s1_ampJ",
+    "s2_max": "s2",
+    "retainedJ_max": "retained_J"
+  },
+  "null_test_probs": {
+    "s1_max": 0.23529411764705882,
+    "s2_max": 0.17647058823529413,
+    "retainedJ_max": 0.7450980392156863
+  },
+  "null_test_joint_p": 0.030938326887848568,
+  "predictive_variants": [],
+  "generated": "2026-08-24T14:50:04"
+}

@@ -94,3 +94,19 @@ def retained_J(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> float:
         return 0.0
     kept = np.sum((J_aa * m_aa) ** 2) + np.sum((J_ab * m_ab) ** 2)
     return float(kept / total)
+
+
+def retained_J_split(pos: np.ndarray, J_aa: np.ndarray, J_ab: np.ndarray) -> tuple[float, float]:
+    """retained_J's same-spin and opposite-spin sectors reported separately,
+    each normalised by its OWN total squared magnitude (so both are
+    fractions in [0, 1], not a further split of the combined fraction).
+    """
+    J_aa = np.asarray(J_aa)
+    J_ab = np.asarray(J_ab)
+    norb = J_aa.shape[-1]
+    m_aa, m_ab = mask_matrices(pos, norb)
+    tot_aa = np.sum(J_aa ** 2)
+    tot_ab = np.sum(J_ab ** 2)
+    same = float(np.sum((J_aa * m_aa) ** 2) / tot_aa) if tot_aa > 0 else 0.0
+    opp = float(np.sum((J_ab * m_ab) ** 2) / tot_ab) if tot_ab > 0 else 0.0
+    return same, opp

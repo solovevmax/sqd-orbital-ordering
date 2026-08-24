@@ -228,6 +228,11 @@ def retained_J_of(pos, J_aa, J_ab):
     return mask.retained_J(pos, J_aa, J_ab)
 
 
+def retained_J_split_of(pos, J_aa, J_ab):
+    """Delegates to src/sqd_ordering/mask.py (single source of truth)."""
+    return mask.retained_J_split(pos, J_aa, J_ab)
+
+
 def parse_permutation(value, norb):
     if isinstance(value, (list, tuple, np.ndarray)):
         arr = np.asarray(value, dtype=int)

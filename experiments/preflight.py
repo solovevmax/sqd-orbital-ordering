@@ -472,10 +472,186 @@ def run_invariance(shots: int) -> int:
     return exit_code
 
 
+def run_shotscan() -> int:
+    banner("SHOTSCAN -- H10 shot-count / seed variance, ordering s1_max (mechanism B)")
+    import unified_run as U  # only for the shared sbd binary path
+    import run_ordering_pipeline as R
+    from pyscf.fci import cistring
+
+    R.CFG["sbd_bin"] = str(U.SBD)
+    if not Path(R.CFG["sbd_bin"]).exists():
+        sys.exit(f"FATAL: sbd binary not found at expected path {R.CFG['sbd_bin']}")
+
+    natoms, basis = 10, "sto-6g"
+    R_TARGET = 1.8
+    R_FALLBACK = 1.6
+    print(f"Attempting H10 reference at R={R_TARGET} (cached only - build_or_load_h10_reference "
+          f"will build it if not cached).")
+    try:
+        ref = R.build_or_load_h10_reference(R_TARGET, natoms, basis, cachedir=f"cache/h10_R{R_TARGET}")
+        R_used = R_TARGET
+    except (SystemExit, RuntimeError) as exc:
+        print(f"R={R_TARGET}: {exc}")
+        print(f"Falling back to R={R_FALLBACK} per protocol (CCSD does not converge at R={R_TARGET} - "
+              f"see PROGRESS.md / Step 4d report for the diverging E_corr trace).")
+        ref = R.build_or_load_h10_reference(R_FALLBACK, natoms, basis, cachedir=f"cache/h10_R{R_FALLBACK}")
+        R_used = R_FALLBACK
+    print(f"Using R={R_used} for the shotscan.")
+
+    norb, nocc = ref["norb"], ref["nocc"]
+    nelec = (nocc, nocc)
+    t1L, t2L = ref["t1L"], ref["t2L"]
+    fcidump_path = Path(ref["fcidump_path"])
+    perm = R.parse_permutation(ref["orderings"]["s1_max"]["perm"], norb)
+    pos = R.positions_from(perm)
+    # match stage3()'s own call exactly (centroids, J_ab) rather than the
+    # bare interaction_pairs_for(pos) crosscheck uses for N2's "anchor" mode
+    Jaa_full, Jab_full = R.diag_coulomb(R.build_ucj(t2L, t1L))
+    pairs = R.interaction_pairs_for(pos, ref["centroids"], J_ab=Jab_full)
+    op = R.build_ucj(t2L, t1L, interaction_pairs=pairs)
+    hf = R.hf_bitstring(norb, nocc)
+    BUDGET = 15
+
+    strs = cistring.make_strings(range(norb), nocc)
+    b2i = {format(s, f"0{norb}b"): i for i, s in enumerate(strs)}
+    W = np.asarray(ref["ci"]).reshape(len(strs), len(strs)) ** 2
+    W /= W.sum()
+
+    print(f"H10 CAS({2*nocc},{norb}) @ R={R_used} A, {basis}  ordering=s1_max  perm={''.join(map(str, perm))}")
+    print(f"FCIDUMP: {fcidump_path}  sha256={sha256_of(fcidump_path)[:16]}")
+
+    shot_counts = [500_000, 2_000_000, 8_000_000]
+    seeds = [2026, 7, 13, 41, 97]
+    csv_path = OUTDIR / "shotscan_results.csv"
+    rows: list[dict[str, Any]] = []
+    depths: set[int] = set()
+    sel_by_shots: dict[int, list[tuple[set, set]]] = {s: [] for s in shot_counts}
+
+    import pandas as pd
+    t0 = time.time()
+    n_total = len(shot_counts) * len(seeds)
+    n_done = 0
+    for shots in shot_counts:
+        for seed in seeds:
+            a_c, b_c, depth = R.sample_bitstrings(op, norb, nelec, shots, seed)
+            depths.add(depth)
+            a_sel, na = R.top_dets(a_c, BUDGET, hf)
+            b_sel, nb = R.top_dets(b_c, BUDGET, hf)
+            ia = [b2i[d] for d in a_sel]
+            ib = [b2i[d] for d in b_sel]
+            captured = float(W[np.ix_(ia, ib)].sum())
+
+            adet_path = OUTDIR / f"_shotscan_{shots}_{seed}_a.txt"
+            bdet_path = OUTDIR / f"_shotscan_{shots}_{seed}_b.txt"
+            adet_path.write_text("\n".join(sorted(a_sel)) + "\n")
+            bdet_path.write_text("\n".join(sorted(b_sel)) + "\n")
+            energy = R.run_sbd(str(fcidump_path), str(adet_path), str(bdet_path), norb)
+            err_mha = (energy - ref["E_CASCI"]) * 1000.0
+
+            row = dict(shots=shots, seed=seed, energy=energy, err_mHa=err_mha,
+                      n_unique_alpha=na, n_unique_beta=nb, depth=depth, captured=captured,
+                      top15_alpha="|".join(sorted(a_sel)), top15_beta="|".join(sorted(b_sel)))
+            rows.append(row)
+            sel_by_shots[shots].append((set(a_sel), set(b_sel)))
+
+            pd.DataFrame(rows).to_csv(csv_path, index=False)
+            n_done += 1
+            el = time.time() - t0
+            print(f"[{n_done:2d}/{n_total}] shots={shots:>9,} seed={seed:<5} "
+                  f"err={err_mha:8.3f} mHa  captured={captured:.4f}  "
+                  f"n_uniq(a/b)={na}/{nb}  eta={el/n_done*(n_total-n_done)/60:.1f}m")
+
+    assert len(depths) == 1, (
+        f"circuit depth varied across runs ({sorted(depths)}) - only the sampling "
+        f"seed should differ between evaluations for a fixed ordering."
+    )
+    circuit_depth = depths.pop()
+    print(f"\nCircuit depth constant at {circuit_depth} across all {n_total} evaluations (asserted).")
+
+    banner("SHOTSCAN SUMMARY")
+    df = pd.DataFrame(rows)
+    summary = {}
+    for shots in shot_counts:
+        sub = df[df.shots == shots]
+        mean_err, sd_err = sub.err_mHa.mean(), sub.err_mHa.std()
+        mean_cap = sub.captured.mean()
+        sets = sel_by_shots[shots]
+        pw_a = [jaccard(sets[i][0], sets[j][0]) for i in range(len(sets)) for j in range(i + 1, len(sets))]
+        pw_b = [jaccard(sets[i][1], sets[j][1]) for i in range(len(sets)) for j in range(i + 1, len(sets))]
+        summary[shots] = dict(mean_err_mHa=mean_err, sd_err_mHa=sd_err, mean_captured=mean_cap,
+                              mean_jaccard_alpha=float(np.mean(pw_a)), mean_jaccard_beta=float(np.mean(pw_b)))
+        print(f"shots={shots:>9,}  mean_err={mean_err:8.3f} mHa  sd={sd_err:7.3f} mHa  "
+              f"mean_captured={mean_cap:.4f}  mean_pairwise_jaccard(a/b)="
+              f"{summary[shots]['mean_jaccard_alpha']:.3f}/{summary[shots]['mean_jaccard_beta']:.3f}")
+
+    sd_ratio = summary[8_000_000]["sd_err_mHa"] / summary[500_000]["sd_err_mHa"]
+    print(f"\nsd(8e6)/sd(5e5) = {sd_ratio:.4f}")
+
+    banner("SHOTSCAN DECISION")
+    if sd_ratio < 0.45:
+        verdict = "SHOT_NOISE_DOMINATED"
+        print(f"SHOT-NOISE DOMINATED: sd ratio {sd_ratio:.4f} < 0.45.")
+        print("Increasing shots materially reduces variance - selection converges to a")
+        print("stable top-15 set. Recommendation: use the highest affordable shot count;")
+        print("no need to average over multiple seeds at fixed shots for production runs.")
+    elif sd_ratio > 0.70:
+        verdict = "INTRINSIC_NEAR_DEGENERACY"
+        print(f"INTRINSIC NEAR-DEGENERACY: sd ratio {sd_ratio:.4f} > 0.70.")
+        print("Variance does not shrink materially with more shots - the spread reflects")
+        print("near-degenerate marginal weights at the budget boundary, not sampling noise.")
+        print("Recommendation: more shots will not stabilize the top-15 selection; either")
+        print("increase BUDGET past the degenerate cluster or report energy as a")
+        print("seed-averaged distribution rather than a single number.")
+    else:
+        verdict = "PARTIAL"
+        print(f"PARTIAL: sd ratio {sd_ratio:.4f} in [0.45, 0.70] - mixed shot-noise and")
+        print("intrinsic-degeneracy contributions. Recommendation: increase shots AND")
+        print("consider whether BUDGET should be widened; re-run this scan after either")
+        print("change to see which one moves the sd ratio.")
+
+    print(f"\nVerdict: {verdict}")
+
+    banner("ANALYTIC CROSS-CHECK (Step 4d prediction vs empirical trend)")
+    oa = np.argsort(W.sum(1))[::-1]
+    ob = np.argsort(W.sum(0))[::-1]
+    wa16_15 = W.sum(1)[oa[15]] / W.sum(1)[oa[14]]
+    wb16_15 = W.sum(0)[ob[15]] / W.sum(0)[ob[14]]
+    w_pred = max(wa16_15, wb16_15)
+    print(f"H10 R={R_used} analytic w16/w15: alpha={wa16_15:.4f}  beta={wb16_15:.4f}")
+    pred_verdict = ("INTRINSIC_NEAR_DEGENERACY" if w_pred > 0.70 else
+                    "SHOT_NOISE_DOMINATED" if w_pred < 0.45 else "PARTIAL")
+    print(f"Analytic prediction: {pred_verdict}   Empirical (sd-ratio) verdict: {verdict}")
+    if pred_verdict != verdict:
+        print("MISMATCH: the analytic marginal-weight prediction and the empirical "
+              "sd-ratio trend disagree. Something in the sampling or selection path "
+              "may be wrong - do not trust either verdict without investigating further.")
+    else:
+        print("Analytic prediction and empirical trend agree.")
+
+    mismatch = pred_verdict != verdict
+    metadata = dict(
+        subcommand="shotscan", R_used=R_used, R_target=R_TARGET, R_fallback_used=(R_used != R_TARGET),
+        ordering="s1_max", perm="".join(map(str, perm)), norb=norb, nelec=list(nelec),
+        shot_counts=shot_counts, seeds=seeds, git_commit=git_commit_hash(),
+        fcidump_sha256=sha256_of(fcidump_path), circuit_depth=circuit_depth,
+        generated=time.strftime("%Y-%m-%dT%H:%M:%S"), summary=summary, sd_ratio_8e6_over_5e5=sd_ratio,
+        verdict=verdict, analytic_w16_w15_alpha=float(wa16_15), analytic_w16_w15_beta=float(wb16_15),
+        analytic_prediction=pred_verdict, analytic_empirical_mismatch=mismatch,
+    )
+    with open(OUTDIR / "shotscan_metadata.json", "w") as fh:
+        json.dump(metadata, fh, indent=2)
+    print(f"\n[out] {csv_path}")
+    print(f"[out] {OUTDIR / 'shotscan_metadata.json'}")
+
+    return 1 if mismatch else 0
+
+
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("subcommand", choices=["crosscheck", "invariance"])
+    ap.add_argument("subcommand", choices=["crosscheck", "invariance", "shotscan"])
     ap.add_argument("--shots", type=int, default=1_000_000)
     args = ap.parse_args()
 
@@ -483,6 +659,8 @@ def main() -> None:
         sys.exit(run_crosscheck(args.shots))
     elif args.subcommand == "invariance":
         sys.exit(run_invariance(args.shots))
+    elif args.subcommand == "shotscan":
+        sys.exit(run_shotscan())
 
 
 if __name__ == "__main__":

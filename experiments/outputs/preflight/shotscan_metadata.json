@@ -1,0 +1,58 @@
+{
+  "subcommand": "shotscan",
+  "R_used": 1.6,
+  "R_target": 1.8,
+  "R_fallback_used": true,
+  "ordering": "s1_max",
+  "perm": "1827056394",
+  "norb": 10,
+  "nelec": [
+    5,
+    5
+  ],
+  "shot_counts": [
+    500000,
+    2000000,
+    8000000
+  ],
+  "seeds": [
+    2026,
+    7,
+    13,
+    41,
+    97
+  ],
+  "git_commit": "d00dfb1d28f486c48a568819cd93cd870bc2ac75-dirty",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "circuit_depth": 3282,
+  "generated": "2026-08-24T10:34:17",
+  "summary": {
+    "500000": {
+      "mean_err_mHa": 219.84199494514823,
+      "sd_err_mHa": 0.14071830663073306,
+      "mean_captured": 0.6549749333868995,
+      "mean_jaccard_alpha": 0.95,
+      "mean_jaccard_beta": 1.0
+    },
+    "2000000": {
+      "mean_err_mHa": 219.9049260850092,
+      "sd_err_mHa": 0.0,
+      "mean_captured": 0.6547827697182127,
+      "mean_jaccard_alpha": 1.0,
+      "mean_jaccard_beta": 1.0
+    },
+    "8000000": {
+      "mean_err_mHa": 219.9049260850092,
+      "sd_err_mHa": 0.0,
+      "mean_captured": 0.6547827697182127,
+      "mean_jaccard_alpha": 1.0,
+      "mean_jaccard_beta": 1.0
+    }
+  },
+  "sd_ratio_8e6_over_5e5": 0.0,
+  "verdict": "SHOT_NOISE_DOMINATED",
+  "analytic_w16_w15_alpha": 0.988933091989899,
+  "analytic_w16_w15_beta": 0.9889330919898971,
+  "analytic_prediction": "INTRINSIC_NEAR_DEGENERACY",
+  "analytic_empirical_mismatch": true
+}

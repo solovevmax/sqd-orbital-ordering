@@ -872,26 +872,71 @@ def run_sbd(fcidump, adet, bdet, norb):
     return e
 
 
-def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
-    banner(
-        f"STAGE 3 -- H10 chain, STO-6G, CAS(10e,10o), "
-        f"R = {CFG['h10_R']} A"
-    )
-    if not CFG["sbd_bin"] or not shutil.which(CFG["sbd_bin"]):
-        sys.exit("FATAL: set SBD_BIN to your sbd chemistry_tpb_selected_basis_"
-                 "diagonalization binary (export SBD_BIN=/path/to/main).")
-    os.makedirs(outdir, exist_ok=True)
-    os.makedirs(cachedir, exist_ok=True)
+def git_commit_hash() -> str:
+    """Current git commit hash of the repository (short + dirty flag)."""
+    try:
+        h = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                           text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True,
+                               text=True, check=True).stdout.strip()
+        return h + ("-dirty" if dirty else "")
+    except Exception as exc:  # pragma: no cover - diagnostic only
+        return f"(unavailable: {exc!r})"
+
+
+def build_or_load_h10_reference(R, natoms, basis, cachedir="cache/h10"):
+    """Build (once) or load the H10 block-Boys-localized reference: rotated
+    amplitudes, localized MO coefficients, FCIDUMP, the full CASCI vector,
+    and the four candidate orderings (physical, s1_max, s2_max,
+    retainedJ_max) with the score each achieves.
+
+    Extracted from stage3()'s original inline logic - same computation, now
+    persisted to `cachedir` so it is computed once per R and reloaded on
+    every subsequent call. Includes stage3()'s original two validation
+    gates verbatim (fail loudly - sys.exit - on either, nothing is cached
+    if they fail):
+      - E_corr computed from the rotated amplitudes against the rotated
+        integrals must match the canonical value to < 1e-9
+      - localized vs canonical CASCI energy must match to < 1e-8 (CASCI is
+        active-space-rotation invariant; this permits only numerical noise)
+
+    Returns a dict: t1L, t2L, U_occ, U_vir, mo_coeff_localized, centroids,
+    E_CASCI, ci (the full CASCI vector), norb, nocc, fcidump_path,
+    orderings (dict of name -> {perm, score}), metadata.
+    """
     import ffsim
+    import copy as _copy
     from pyscf import mcscf
     from pyscf.tools import fcidump as fcidump_mod
 
+    cachedir = Path(cachedir)
+    ref_path = cachedir / "reference.npz"
+    fci_path = cachedir / "fcidump.txt"
+    orderings_path = cachedir / "orderings.json"
+    meta_path = cachedir / "metadata.json"
+
+    if ref_path.exists() and fci_path.exists() and orderings_path.exists() and meta_path.exists():
+        print(f"[h10-ref] loading cached reference from {cachedir}")
+        data = np.load(ref_path)
+        return dict(
+            t1L=data["t1L"], t2L=data["t2L"], U_occ=data["U_occ"], U_vir=data["U_vir"],
+            mo_coeff_localized=data["mo_coeff_localized"], centroids=data["centroids"],
+            E_CASCI=float(data["E_CASCI"]), ci=data["ci"],
+            norb=int(data["norb"]), nocc=int(data["nocc"]),
+            fcidump_path=str(fci_path),
+            orderings=json.loads(orderings_path.read_text()),
+            metadata=json.loads(meta_path.read_text()),
+        )
+
+    cachedir.mkdir(parents=True, exist_ok=True)
+    print(f"[h10-ref] no cache at {cachedir} -- building reference for "
+          f"R={R}, natoms={natoms}, basis={basis}")
+
     t0 = time.time()
-    mol, mf, cc, norb, nocc = build_h10(CFG["h10_R"], CFG["h10_natoms"],
-                                        CFG["h10_basis"])
+    mol, mf, cc, norb, nocc = build_h10(R, natoms, basis)
     nelec = (nocc, nocc)
     active = list(range(norb))
-    print(f"[h10 ] norb={norb} nelec={nelec} E_RHF={mf.e_tot:.12f} "
+    print(f"[h10-ref] norb={norb} nelec={nelec} E_RHF={mf.e_tot:.12f} "
           f"E_corr={cc.e_corr:.12f}")
 
     # --- block-Boys localization + exact amplitude rotation --------------
@@ -899,7 +944,6 @@ def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
     t1L, t2L = rotate_amplitudes(np.asarray(cc.t1), np.asarray(cc.t2), Uo, Uv)
 
     md_can = ffsim.MolecularData.from_scf(mf, active_space=active)
-    import copy as _copy
     mf_loc = _copy.copy(mf)
     mf_loc.mo_coeff = C_loc
     md_loc = ffsim.MolecularData.from_scf(mf_loc, active_space=active)
@@ -915,37 +959,42 @@ def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
 
     e_can = ecorr(np.asarray(cc.t1), np.asarray(cc.t2), md_can)
     e_loc = ecorr(t1L, t2L, md_loc)
-    print(f"[chk ] E_corr from amplitudes: canonical {e_can:.12f}  "
+    print(f"[h10-ref] E_corr from amplitudes: canonical {e_can:.12f}  "
           f"localized {e_loc:.12f}  diff {abs(e_can-e_loc):.2e}")
     if abs(e_can - e_loc) > 1e-9:
         sys.exit("FATAL: amplitude rotation inconsistent with rotated "
-                 "integrals. Do not proceed.")
-# CASCI is active-space rotation invariant; permit small numerical noise only.
+                 "integrals. Refusing to cache.")
+
+    # CASCI is active-space rotation invariant; permit small numerical noise only.
     def casci(C):
         mc = mcscf.CASCI(mf, norb, mol.nelectron)
         mc.verbose = 0
-        return float(mc.kernel(C)[0])
-    e_casci_can, e_casci_loc = casci(np.asarray(mf.mo_coeff)), casci(C_loc)
-    print(f"[chk ] CASCI canonical {e_casci_can:.12f}  localized "
+        mc.fcisolver.conv_tol = 1e-12
+        mc.fcisolver.max_cycle = 200
+        e, _, ci_vec, *_ = mc.kernel(C)
+        return float(e), np.asarray(ci_vec)
+
+    e_casci_can, _ = casci(np.asarray(mf.mo_coeff))
+    e_casci_loc, ci_loc = casci(C_loc)
+    print(f"[h10-ref] CASCI canonical {e_casci_can:.12f}  localized "
           f"{e_casci_loc:.12f}  diff {abs(e_casci_can-e_casci_loc):.2e}")
-    if abs(e_casci_can - e_casci_loc) > 1e-7:
-        sys.exit("FATAL: CASCI energies differ -- not the same active space.")
-    E_EXACT = e_casci_loc
+    if abs(e_casci_can - e_casci_loc) > 1e-11:
+        sys.exit("FATAL: CASCI energies differ -- not the same active space. Refusing to cache.")
+    E_CASCI = e_casci_loc
 
     # --- one FCIDUMP for every ordering ---------------------------------
     h1 = np.asarray(md_loc.hamiltonian.one_body_tensor)
     h2 = np.asarray(md_loc.hamiltonian.two_body_tensor)
-    fci_path = os.path.join(cachedir, "fcidump.txt")
-    fcidump_mod.from_integrals(fci_path, h1, h2, norb, mol.nelectron,
+    fcidump_mod.from_integrals(str(fci_path), h1, h2, norb, mol.nelectron,
                                nuc=float(md_loc.core_energy), ms=0)
-    print(f"[fcid] {fci_path}  sha={sha(fci_path)}")
+    print(f"[h10-ref] FCIDUMP: {fci_path}  sha={sha(fci_path)}")
 
     # --- ground truth + candidate orderings ------------------------------
     cent = orbital_centroids(mol, C_loc, active)
     phys = physical_ordering(cent, nocc)
-    print(f"[phys] centroids (a.u.): "
+    print(f"[h10-ref] centroids (a.u.): "
           f"{np.array2string(cent, precision=2, suppress_small=True)}")
-    print(f"[phys] physical (chain) ordering: {perm_to_str(phys)}")
+    print(f"[h10-ref] physical (chain) ordering: {perm_to_str(phys)}")
 
     amp = Amplitudes(t1L, t2L, nocc, norb)
     Jaa, Jab = diag_coulomb(build_ucj(t2L, t1L))
@@ -956,13 +1005,76 @@ def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
         positions_from(p), amp, Jaa, Jab, w_ss
     )["s1_ampJ"]
     obj_rj = lambda p: retained_J_of(positions_from(p), Jaa, Jab)
-    print("[opt ] hill-climbing non-oracle objectives ...")
+    print("[h10-ref] hill-climbing non-oracle objectives ...")
     p_s2, v_s2 = hill_climb(obj_s2, norb, seed=11)
     p_s1, v_s1 = hill_climb(obj_s1, norb, seed=12)
     p_rj, v_rj = hill_climb(obj_rj, norb, seed=13)
-    print(f"[opt ] s2_max={perm_to_str(p_s2)} ({v_s2:.4f})  "
+    print(f"[h10-ref] physical={perm_to_str(phys)}  "
+          f"s2_max={perm_to_str(p_s2)} ({v_s2:.4f})  "
           f"s1_max={perm_to_str(p_s1)} ({v_s1:.4f})  "
-          f"rJ_max={perm_to_str(p_rj)} ({v_rj:.4f})")
+          f"retainedJ_max={perm_to_str(p_rj)} ({v_rj:.4f})")
+
+    orderings = dict(
+        physical=dict(perm=perm_to_str(phys), score=None),
+        s1_max=dict(perm=perm_to_str(p_s1), score=v_s1),
+        s2_max=dict(perm=perm_to_str(p_s2), score=v_s2),
+        retainedJ_max=dict(perm=perm_to_str(p_rj), score=v_rj),
+    )
+    orderings_path.write_text(json.dumps(orderings, indent=2))
+
+    np.savez(ref_path, t1L=t1L, t2L=t2L, U_occ=Uo, U_vir=Uv,
+             mo_coeff_localized=C_loc, centroids=cent, E_CASCI=E_CASCI, ci=ci_loc,
+             norb=norb, nocc=nocc)
+
+    metadata = dict(
+        R=R, basis=basis, natoms=natoms, norb=norb, nelec=list(nelec),
+        E_RHF=float(mf.e_tot), E_corr=float(cc.e_corr), cc_converged=bool(cc.converged),
+        cc_cycles=int(cc.cycles),
+        E_CASCI=E_CASCI, n_reps=CFG["n_reps"],
+        fcidump_sha256=sha(fci_path), reference_npz_sha256=sha(ref_path),
+        orderings_json_sha256=sha(orderings_path),
+        git_commit=git_commit_hash(),
+        elapsed_min=round((time.time() - t0) / 60, 2),
+        generated=time.strftime("%Y-%m-%dT%H:%M:%S"),
+    )
+    meta_path.write_text(json.dumps(metadata, indent=2))
+    print(f"[h10-ref] cached to {cachedir}  ({metadata['elapsed_min']} min)")
+
+    return dict(
+        t1L=t1L, t2L=t2L, U_occ=Uo, U_vir=Uv, mo_coeff_localized=C_loc,
+        centroids=cent, E_CASCI=E_CASCI, ci=ci_loc, norb=norb, nocc=nocc,
+        fcidump_path=str(fci_path), orderings=orderings, metadata=metadata,
+    )
+
+
+def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
+    banner(
+        f"STAGE 3 -- H10 chain, STO-6G, CAS(10e,10o), "
+        f"R = {CFG['h10_R']} A"
+    )
+    if not CFG["sbd_bin"] or not shutil.which(CFG["sbd_bin"]):
+        sys.exit("FATAL: set SBD_BIN to your sbd chemistry_tpb_selected_basis_"
+                 "diagonalization binary (export SBD_BIN=/path/to/main).")
+    os.makedirs(outdir, exist_ok=True)
+
+    ref = build_or_load_h10_reference(CFG["h10_R"], CFG["h10_natoms"], CFG["h10_basis"],
+                                      cachedir=cachedir)
+    t0 = time.time()
+    norb, nocc = ref["norb"], ref["nocc"]
+    nelec = (nocc, nocc)
+    t1L, t2L = ref["t1L"], ref["t2L"]
+    fci_path = ref["fcidump_path"]
+    E_EXACT = ref["E_CASCI"]
+    phys = parse_permutation(ref["orderings"]["physical"]["perm"], norb)
+    p_s1 = parse_permutation(ref["orderings"]["s1_max"]["perm"], norb)
+    p_s2 = parse_permutation(ref["orderings"]["s2_max"]["perm"], norb)
+    p_rj = parse_permutation(ref["orderings"]["retainedJ_max"]["perm"], norb)
+
+    # cheap, deterministic from t1L/t2L - not part of the persisted reference,
+    # recomputed here exactly as the original inline code did
+    amp = Amplitudes(t1L, t2L, nocc, norb)
+    Jaa, Jab = diag_coulomb(build_ucj(t2L, t1L))
+    w_ss = float(np.abs(Jaa).sum() / (np.abs(Jaa).sum() + np.abs(Jab).sum()))
 
     tau = lambda a, b: float(kendalltau(positions_from(a),
                                         positions_from(b)).statistic)
@@ -993,7 +1105,7 @@ def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
 
     for name, perm in orderings:
         pos = positions_from(perm)
-        centroids = orbital_centroids(mol, C_loc, active)
+        centroids = ref["centroids"]
         pairs = interaction_pairs_for(pos, centroids, J_ab=Jab)
         try:
             op = build_ucj(t2L, t1L, interaction_pairs=pairs)
@@ -1102,12 +1214,12 @@ def stage3(outdir="outputs/h10", cachedir="cache/h10", carry_scores=()):
         print("   the missing piece. Iterate on the construction, not on scale.")
 
     meta = dict(system="H10", R=CFG["h10_R"], basis=CFG["h10_basis"],
-                norb=norb, nelec=list(nelec), e_rhf=float(mf.e_tot),
-                e_corr=float(cc.e_corr), cc_converged=bool(cc.converged),
+                norb=norb, nelec=list(nelec), e_rhf=ref["metadata"]["E_RHF"],
+                e_corr=ref["metadata"]["E_corr"], cc_converged=ref["metadata"]["cc_converged"],
                 e_casci=E_EXACT, n_reps=CFG["n_reps"], shots=CFG["shots"],
                 n_dets=CFG["n_dets"], seeds=list(CFG["seeds"]),
                 use_pre_init=CFG["use_pre_init"],
-                fcidump_sha=sha(fci_path), mo_loc_sha=sha(C_loc),
+                fcidump_sha=sha(fci_path), mo_loc_sha=sha(ref["mo_coeff_localized"]),
                 t2_loc_sha=sha(t2L), physical_order=perm_to_str(phys),
                 s2_max=perm_to_str(p_s2), s1_max=perm_to_str(p_s1),
                 retainedJ_max=perm_to_str(p_rj),

@@ -1,0 +1,22 @@
+{
+  "R": 1.6,
+  "basis": "sto-6g",
+  "natoms": 10,
+  "norb": 10,
+  "nelec": [
+    5,
+    5
+  ],
+  "E_RHF": -4.492708786837229,
+  "E_corr": -0.7395525733297312,
+  "cc_converged": true,
+  "cc_cycles": 48,
+  "E_CASCI": -4.966071088325821,
+  "n_reps": null,
+  "fcidump_sha256": "33323a026f11546c",
+  "reference_npz_sha256": "dfb6d4d9b3abe954",
+  "orderings_json_sha256": "d629289766507b46",
+  "git_commit": "b84ff9f00043eacd306384bc64f7b66429adabb7-dirty",
+  "elapsed_min": 0.02,
+  "generated": "2026-08-24T10:19:21"
+}

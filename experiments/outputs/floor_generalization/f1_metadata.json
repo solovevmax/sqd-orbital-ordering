@@ -1,0 +1,49 @@
+{
+  "part": "F1_floor_generalization",
+  "git_commit": "5c658fa399847048b9675e1468c6f947d818b9a0",
+  "shots": 2000000,
+  "seed": 2026,
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "f1a_floor_matches": true,
+  "f1a_default_matches": true,
+  "f1a_gap_physical": 10.461886111596812,
+  "f1b": [
+    {
+      "ordering": "identity",
+      "floor": 458.6996615694874,
+      "default": 300.31919403956664,
+      "best": 224.59889961938285,
+      "n_total": 120,
+      "n_worse_than_floor": 0,
+      "frac": 0.0
+    },
+    {
+      "ordering": "physical",
+      "floor": 379.2530697468344,
+      "default": 389.7149558584312,
+      "best": 172.14939218691416,
+      "n_total": 40,
+      "n_worse_than_floor": 1,
+      "frac": 0.025
+    },
+    {
+      "ordering": "rand007",
+      "floor": 372.85532344303715,
+      "default": 261.59552953727336,
+      "best": 175.54212629681308,
+      "n_total": 40,
+      "n_worse_than_floor": 3,
+      "frac": 0.075
+    }
+  ],
+  "f1c_n_worse_than_floor": 2,
+  "f1c_n_total": 50,
+  "f1c_rho_floor_default": 0.42780312124849934,
+  "f1c_p_floor_default": 0.0019419062354174013,
+  "f1c_rho_baseline_gap": -0.35903961584633853,
+  "f1c_p_baseline_gap": 0.010449583493159345,
+  "f1d_frac_would_improve": 0.04,
+  "f1d_mean_improvement": 33.74714586708592,
+  "generated": "2026-08-25T12:52:53"
+}

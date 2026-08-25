@@ -1,0 +1,43 @@
+
+==============================================================================
+F1 -- IS THE OPPOSITE-SPIN MASK A NET LIABILITY AT SOME ORDERINGS?
+==============================================================================
+
+==============================================================================
+F1a -- like-for-like re-verification at physical
+==============================================================================
+  floor (re-run):   err_mHa = 379.25  (E1's stored value: 379.25)
+  default (re-run): err_mHa = 389.71  (baseline CSV seed=2026: 389.71)
+  floor reproduces exactly: True   default reproduces exactly: True
+  default MINUS floor at physical = +10.46 mHa (default is WORSE than no-opposite-spin)
+
+==============================================================================
+F1b -- per-ordering breakdown (identity, physical, rand007)
+==============================================================================
+  identity     floor= 458.70  default= 300.32  best= 224.60  worse-than-floor=0/120 (0.0%)
+  physical     floor= 379.25  default= 389.71  best= 172.15  worse-than-floor=1/40 (2.5%)
+  rand007      floor= 372.86  default= 261.60  best= 175.54  worse-than-floor=3/40 (7.5%)
+
+==============================================================================
+F1c -- floor for all 50 random baseline permutations (seed 2026, 15-dim)
+==============================================================================
+
+  50/50 evaluated OK
+  default-anchor error WORSE than own floor: 2/50 (4.0%)
+  rho(floor_err, default_err) across 50 = +0.428  p=1.94e-03
+  rho(baseline err_mHa, floor-minus-default gap) = -0.359  p=1.04e-02
+  (gap = floor_err - default_err; positive means opposite-spin HELPS at that ordering; negative means it HURTS. If rho > 0: opposite-spin helps MORE at ALREADY-BAD orderings (err and gap both large together, i.e. worse orderings get more benefit from ab-coupling); if rho < 0: opposite-spin helps more at GOOD orderings.)
+  -> Significant: opposite-spin coupling helps more at good orderings (smaller err_mHa).
+
+==============================================================================
+F1d -- the decision rule: switch opposite-spin OFF when it hurts
+==============================================================================
+  2/50 random orderings (4.0%) would improve by switching opposite-spin OFF
+  mean improvement among those: 33.75 mHa
+  range of improvement: 17.34 - 50.15 mHa
+
+==============================================================================
+HEADLINE
+==============================================================================
+Opposite-spin locality mask is a net liability (default worse than no-ab-at-all) at 4.0% of the 50 random baseline orderings.
+VERDICT: a minority effect - the opposite-spin mask helps at most orderings, with occasional exceptions.

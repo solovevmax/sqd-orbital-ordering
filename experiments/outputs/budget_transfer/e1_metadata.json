@@ -1,0 +1,19 @@
+{
+  "part": "E1_floor",
+  "git_commit": "7ee356ba1a1cc5bfc26c4bba167dafd7cc0465b9",
+  "shots": 2000000,
+  "seed": 2026,
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "c1_csv_sha256": "476b4eff830918afe7601c716f65fd1466c5fdb10f9d4cf7fb9d819bf90fadd5",
+  "c2_csv_sha256": "a258d5783a32ca16b961279d29e88e0d5e23f1e4b7b3343ab789c7fdbaff7dea",
+  "floor_err_mHa": 458.7,
+  "n_floor_identity": 17,
+  "no_ab_control_err_mHa": 458.6996615694874,
+  "matches_floor": true,
+  "floor_by_ordering": {
+    "identity": 458.6996615694874,
+    "physical": 379.2530697468344,
+    "rand007": 372.85532344303715
+  },
+  "generated": "2026-08-25T09:28:14"
+}

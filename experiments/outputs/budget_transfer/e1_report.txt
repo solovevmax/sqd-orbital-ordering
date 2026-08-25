@@ -1,0 +1,41 @@
+
+==============================================================================
+E1 -- THE DEGENERATE FLOOR
+==============================================================================
+
+==============================================================================
+J_ab on-site weight per triple (120, identity)
+==============================================================================
+  triples at floor (|err_mHa - 458.7| < 0.1): 17
+  floor triples: [(3, 5, 7), (5, 6, 7), (4, 6, 7), (3, 4, 7), (2, 4, 5), (4, 5, 7), (3, 5, 6), (3, 4, 6), (4, 5, 6), (3, 4, 5), (2, 3, 5), (2, 3, 4), (2, 3, 6), (2, 4, 6), (2, 4, 7), (2, 5, 7), (3, 6, 7)]
+
+  J_ab weight: floor triples (n=17): mean=1.2956  range=[0.7204, 1.7469]
+  J_ab weight: best 10 triples:                 mean=8.0324  range=[5.5692, 8.6067]
+  J_ab weight: ALL 120 triples:                  mean=5.5076  range=[0.7204, 12.1516]
+
+  are floor triples exactly the lowest-J_ab ones? floor max jab_weight (1.7469) vs median of all 120 (5.1282): YES, all below median
+  18 of 120 triples have jab_weight <= the floor group's max - does NOT exactly match the floor group size (17)
+
+==============================================================================
+Control: interaction_pairs_ab = [] (no opposite-spin terms), each ordering's own same-spin mask
+==============================================================================
+  identity: err_mHa (no ab terms) = 458.6997   status=OK
+  matches the observed floor (458.7)? True
+  -> CONFIRMED: the floor is the 'no alpha-beta correlation' state. Any triple whose anchors carry negligible on-site J_ab weight effectively samples the same-spin-only ansatz, regardless of which specific orbitals were nominally chosen as anchors.
+
+  The floor is a property of the SAME-SPIN mask (position-dependent), so it is generally ordering-specific - checking physical and rand007's own floors too:
+  physical: err_mHa (no ab terms) = 379.2531   status=OK
+  rand007: err_mHa (no ab terms) = 372.8553   status=OK
+
+==============================================================================
+Floor count per ordering (each ordering's OWN floor value), and rho excluding it
+==============================================================================
+  identity     n=120  floor=458.70 n_floor=17   rho(all)=-0.775 (p=3.16e-25)  rho(above floor)=-0.646 (p=1.68e-13)  range_above_floor=233.95 mHa
+  physical     n=40   floor=379.25 n_floor=0    rho(all)=-0.255 (p=1.12e-01)  rho(above floor)=-0.255 (p=1.12e-01)  range_above_floor=214.25 mHa
+  rand007      n=40   floor=372.86 n_floor=3    rho(all)=-0.608 (p=3.17e-05)  rho(above floor)=-0.507 (p=1.37e-03)  range_above_floor=196.04 mHa
+
+==============================================================================
+Does the proxy fail at physical, or is there just less spread to predict?
+==============================================================================
+  physical: n_floor=0, range above floor=214.25 mHa, rho above floor=-0.255
+  -> Excluding the floor does NOT rescue the proxy at physical: rho above the floor is still weak. This is a genuine proxy failure, not merely an artefact of floor-triples adding unpredictable noise to the correlation.

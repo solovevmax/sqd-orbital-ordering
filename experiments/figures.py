@@ -17,6 +17,12 @@ experiments/outputs/. Figures 1 (bottom panel) and 2 (panel A) need the
 size is outputs/stage1/nonoracle_scores.csv (root-level outputs/, not
 experiments/outputs/). It is read as-is -- no recomputation -- and the
 exception is called out explicitly in results/figures/README.md.
+
+Every render is checked before it is written: check_clipping() draws the
+figure at its final save dpi and flags any Text/Legend artist whose window
+extent falls outside the canvas, and save() re-opens the written PNG with
+PIL to confirm its pixel dimensions match the requested physical size. Both
+are reported per-file at the end of main().
 """
 from __future__ import annotations
 
@@ -30,7 +36,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
+import matplotlib.text as mtext
+import matplotlib.legend as mlegend
+import matplotlib.ticker as mticker
 import numpy as np
+from PIL import Image
 from scipy.stats import ConstantInputWarning, spearmanr
 
 # A handful of score variants (e.g. s2_os) saturate at a ceiling value for
@@ -57,18 +68,32 @@ OI = dict(
     purple="#CC79A7",
 )
 
+# Canonical ordering-name vocabulary, used verbatim everywhere an ordering
+# is named on a figure: identity, reverse, physical, physical_reverse,
+# s1_max, s2_max, retainedJ_max, rand007. Some cached CSVs spell these
+# differently (e.g. N2's "max_retainedJ"); RENAME_ORDERING maps those onto
+# the canonical spelling before anything is drawn or printed.
+RENAME_ORDERING = {"max_retainedJ": "retainedJ_max"}
+
 ORDER_COLOR = {
     "identity": OI["blue"],
     "physical": OI["vermillion"],
     "physical_reverse": OI["purple"],
+    "s1_max": OI["yellow"],
     "s2_max": OI["orange"],
     "retainedJ_max": OI["sky_blue"],
     "rand007": OI["green"],
-    "reverse": OI["yellow"],
+    "reverse": OI["black"],
     "max_captured_ORACLE": OI["vermillion"],
-    "max_retainedJ": OI["green"],
 }
 RANDOM_COLOR = OI["black"]
+
+# retained_J's readable name is kept as "retained_J" throughout (an
+# established symbol in this project's own vocabulary, on a par with "s1"
+# and "s2"), per the explicit figure-6 labelling request; G1's "no column
+# names" rule targets ad hoc identifiers like err_mHa, which do get a
+# plain-English replacement everywhere below.
+RETAINED_J_OS_LABEL = "retained_J (opposite-spin only)"
 
 MM_TO_IN = 1.0 / 25.4
 PAPER_W = 85 * MM_TO_IN
@@ -101,13 +126,79 @@ def clean(ax):
     ax.spines["right"].set_visible(False)
 
 
+# ----------------------------------------------------------------------
+# Render verification (G3 / G5): clipping check + PNG dimension read-back
+# ----------------------------------------------------------------------
+
+RENDER_REPORT = []
+
+
+def check_clipping(fig, dpi):
+    """Draw fig at `dpi` and return text of any Text/Legend artist whose
+    window extent falls outside the canvas -- i.e. would be visibly cut
+    off in the saved raster. Not a check against the axes box: titles,
+    tick labels and axis labels legitimately sit outside the axes but
+    must still land inside the canvas."""
+    fig.set_dpi(dpi)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    w_px, h_px = fig.canvas.get_width_height()
+    bad = []
+    for artist in fig.findobj():
+        if isinstance(artist, mtext.Text):
+            # matplotlib's tick-label pooling leaves stale, detached Text
+            # instances behind after a locator recompute (axes=None, not
+            # a figure-level text either) -- get_visible() still reports
+            # True on these, but they are never actually drawn. Only text
+            # still attached to an axes, or a genuine figure-level text
+            # (fig.text / suptitle), is a real candidate for clipping.
+            attached = artist.axes is not None or artist in fig.texts
+            if not attached or not artist.get_visible():
+                continue
+            txt = artist.get_text()
+            if not txt or not txt.strip():
+                continue
+            try:
+                bbox = artist.get_window_extent(renderer)
+            except Exception:
+                continue
+            if bbox.width == 0 and bbox.height == 0:
+                continue
+            if bbox.x0 < -1 or bbox.y0 < -1 or bbox.x1 > w_px + 1 or bbox.y1 > h_px + 1:
+                bad.append(txt.replace("\n", " / "))
+        elif isinstance(artist, mlegend.Legend):
+            try:
+                bbox = artist.get_window_extent(renderer)
+            except Exception:
+                continue
+            if bbox.x0 < -1 or bbox.y0 < -1 or bbox.x1 > w_px + 1 or bbox.y1 > h_px + 1:
+                bad.append("<legend>")
+    return bad, (w_px, h_px)
+
+
 def save(fig, name, style):
     s = STYLE[style]
     pdf = OUTDIR / f"{name}_{style}.pdf"
     png = OUTDIR / f"{name}_{style}.png"
+
+    # Save first (this is what a reader actually sees), then run the
+    # clipping check as the last thing done on this figure, at the same
+    # dpi as the PNG save -- constrained_layout can shift slightly between
+    # successive draws at different dpi, so checking *before* saving can
+    # flag a transient layout that was never actually written to disk.
+    w_in, h_in = fig.get_size_inches()
     fig.savefig(pdf)
     fig.savefig(png, dpi=s["dpi"])
+    clipped, (w_px, h_px) = check_clipping(fig, dpi=s["dpi"])
     plt.close(fig)
+
+    with Image.open(png) as im:
+        actual_px = im.size
+    expected_px = (round(w_in * s["dpi"]), round(h_in * s["dpi"]))
+
+    RENDER_REPORT.append(dict(
+        name=png.name, actual_px=actual_px, expected_px=expected_px, clipped=clipped,
+    ))
     return [pdf.name, png.name]
 
 
@@ -140,21 +231,19 @@ B1_OFFSET = REPO / "experiments" / "outputs" / "anchor_decomposition_R1.6" / "b1
 F1B_NAMED = REPO / "experiments" / "outputs" / "floor_generalization" / "f1b_named_orderings.csv"
 
 
-def h10_rows():
-    return read_csv(H10_SCORES)
-
-
 def h10_named_rand():
-    rows = h10_rows()
+    rows = read_csv(H10_SCORES)
     rand = [r for r in rows if r["ordering"].startswith("rand")]
-    named = {r["ordering"]: r for r in rows if not r["ordering"].startswith("rand")}
+    named = {RENAME_ORDERING.get(r["ordering"], r["ordering"]): r
+             for r in rows if not r["ordering"].startswith("rand")}
     return rand, named
 
 
 def n2_named_rand():
     rows = read_csv(N2_SCORES)
     rand = [r for r in rows if r["ordering"][0] == "r" and r["ordering"][1:].isdigit()]
-    named = {r["ordering"]: r for r in rows if not (r["ordering"][0] == "r" and r["ordering"][1:].isdigit())}
+    named = {RENAME_ORDERING.get(r["ordering"], r["ordering"]): r
+             for r in rows if not (r["ordering"][0] == "r" and r["ordering"][1:].isdigit())}
     return rand, named
 
 
@@ -162,17 +251,80 @@ def n2_named_rand():
 # FIGURE 1 -- the effect exists
 # ========================================================================
 
+def _label_groups(named_vals):
+    """Merge named orderings landing on (near-)identical values, so two
+    markers never sit exactly on top of one another, and return groups
+    sorted by value ascending."""
+    groups = []
+    for label, val in sorted(named_vals.items(), key=lambda kv: kv[1]):
+        if groups and abs(val - groups[-1][1]) < 1e-6:
+            groups[-1] = (groups[-1][0] + " = " + label, groups[-1][1])
+        else:
+            groups.append((label, val))
+    return groups
+
+
 def draw_fig1(style):
     s = STYLE[style]
-    figsize = (PAPER_W, PAPER_W * 1.05) if style == "paper" else (10.0, 5.625)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, layout="constrained")
+
+    h10_rand, h10_named = h10_named_rand()
+    h10_wanted = ["identity", "physical", "physical_reverse", "s1_max", "s2_max", "retainedJ_max"]
+    h10_named_use = {k: float(h10_named[k]["err_mHa"]) for k in h10_wanted if k in h10_named}
+    h10_rand_vals = [float(r["err_mHa"]) for r in h10_rand]
+    h10_groups = _label_groups(h10_named_use)
+
+    n2_rand, n2_named = n2_named_rand()
+    n2_wanted = ["identity", "reverse", "max_captured_ORACLE", "retainedJ_max"]
+    n2_named_use = {k: float(n2_named[k]["err_mHa"]) for k in n2_wanted if k in n2_named}
+    n2_rand_vals = [float(r["err_mHa"]) for r in n2_rand]
+    n2_groups = _label_groups(n2_named_use)
+
+    # every named ordering gets its own label row (a "staircase"), so
+    # near-coincident values never collide -- unlike a fixed small number
+    # of tiers, this scales with however many names a panel needs. row_h
+    # is in data-y units (used to place rows within each axes); row_in /
+    # overhead_in are physical inches (used to size the figure so however
+    # many rows a panel needs, it actually has room to render them).
+    row_h = 0.34
+    base_y = 0.55
+    row_in, overhead_in, width_in = (0.145, 1.05, PAPER_W) if style == "paper" \
+        else (0.30, 1.9, 11.5)
+
+    def panel_rows(n_groups):
+        return base_y + row_h * (n_groups - 1) + 0.75  # + bracket + headroom
+
+    h_ratio = panel_rows(len(h10_groups))
+    n_ratio = panel_rows(len(n2_groups))
+    h_in = overhead_in + row_in * len(h10_groups)
+    n_in = overhead_in + row_in * len(n2_groups)
+    figsize = (width_in, h_in + n_in)
+
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=figsize, layout="constrained",
+        gridspec_kw=dict(height_ratios=[h_ratio, n_ratio]),
+    )
 
     rng = np.random.default_rng(0)
 
-    def strip(ax, rand_vals, named_vals, xlabel, title):
-        xspan = max(rand_vals) - min(rand_vals)
-        y = rng.uniform(-0.12, 0.35, size=len(rand_vals))
-        ax.scatter(rand_vals, y, s=s["ms"] * 0.5, c=RANDOM_COLOR, alpha=0.35,
+    def strip(ax, rand_vals, groups, xlabel, title, fold_label):
+        vmin, vmax = min(rand_vals), max(rand_vals)
+        xspan = vmax - vmin
+        n_rows = len(groups)
+        top_row_y = base_y + row_h * (n_rows - 1)
+        bracket_y = top_row_y + 0.5
+
+        # shaded band across the full random min-to-max range, the
+        # headline number made visually legible without arithmetic
+        ax.axvspan(vmin, vmax, color=OI["black"], alpha=0.06, zorder=0)
+        fold = vmax / vmin
+        ax.annotate("", xy=(vmax, bracket_y), xytext=(vmin, bracket_y),
+                    arrowprops=dict(arrowstyle="<->", color=RANDOM_COLOR, lw=s["lw"]))
+        ax.text((vmin + vmax) / 2, bracket_y + 0.14, f"{fold:.1f}$\\times$",
+                ha="center", va="bottom", fontsize=s["font"], color=RANDOM_COLOR,
+                fontweight="bold")
+
+        y_pts = rng.uniform(-0.20, 0.20, size=len(rand_vals))
+        ax.scatter(rand_vals, y_pts, s=s["ms"] * 0.5, c=RANDOM_COLOR, alpha=0.35,
                    linewidths=0, zorder=2)
         med = float(np.median(rand_vals))
         ax.axvline(med, color=RANDOM_COLOR, lw=s["lw"] * 0.8, ls=":", zorder=1)
@@ -180,76 +332,55 @@ def draw_fig1(style):
                 transform=ax.transAxes, ha="left", va="bottom",
                 fontsize=s["tick"], color=RANDOM_COLOR)
 
-        # merge named orderings that land on (near-)identical values so
-        # markers/labels never sit exactly on top of one another
-        groups = []
-        for label, val in sorted(named_vals.items(), key=lambda kv: kv[1]):
-            if groups and abs(val - groups[-1][1]) < 1e-6:
-                groups[-1] = (groups[-1][0] + " = " + label, groups[-1][1])
-            else:
-                groups.append((label, val))
-
-        # greedily assign each item to one of a few y-tiers, each time
-        # picking the tier whose most-recent x is farthest from this x, to
-        # keep near-x items from landing in visually adjacent tiers
-        n_tiers = min(4, len(groups)) if groups else 1
-        tier_y = np.linspace(0.55, 1.55, n_tiers) if n_tiers > 1 else [1.0]
-        tier_last_x = [None] * n_tiers
-        for label, val in groups:
-            if any(t is None for t in tier_last_x):
-                ti = next(i for i, t in enumerate(tier_last_x) if t is None)
-            else:
-                ti = int(np.argmax([abs(val - t) for t in tier_last_x]))
-            tier_last_x[ti] = val
+        # named markers sit ON the strip baseline (y=0), same line as the
+        # random points, distinguished by shape/size/colour; labels are
+        # staircased above with a thin leader line back to the marker
+        for i, (label, val) in enumerate(groups):
+            row_y = base_y + row_h * i
             c = ORDER_COLOR.get(label.split(" = ")[0], OI["black"])
-            ax.scatter([val], [tier_y[ti]], s=s["ms"] * 3.2, c=c, marker="D",
-                       edgecolors="white", linewidths=s["marker_lw"] * 0.5, zorder=3)
-            ax.plot([val, val], [0.35, tier_y[ti] - 0.12], color=c,
-                    lw=s["lw"] * 0.5, alpha=0.5, zorder=1)
-            ax.annotate(label, xy=(val, tier_y[ti]), xytext=(4, 0),
+            ax.scatter([val], [0], s=s["ms"] * 3.4, c=c, marker="D",
+                       edgecolors="white", linewidths=s["marker_lw"] * 0.6, zorder=4)
+            ax.plot([val, val], [0.16, row_y - 0.08], color=c,
+                    lw=s["lw"] * 0.6, alpha=0.6, zorder=1)
+            ax.annotate(label, xy=(val, row_y), xytext=(0, 2),
                         textcoords="offset points",
-                        fontsize=s["tick"], color=c, va="center", ha="left")
+                        fontsize=s["tick"], color=c, va="bottom", ha="center")
 
         ax.set_yticks([])
-        ax.set_ylim(-0.55, 2.05)
-        ax.set_xlim(min(rand_vals) - 0.06 * xspan, max(rand_vals) + 0.34 * xspan)
+        ax.set_ylim(-0.45, bracket_y + 0.5)
+        ax.set_xlim(vmin - 0.09 * xspan, vmax + 0.09 * xspan)
         for spine in ("left", "top", "right"):
             ax.spines[spine].set_visible(False)
         ax.set_xlabel(xlabel)
         ax.set_title(title, loc="left", fontsize=s["font"])
-        return med
+        return med, fold
 
-    h10_rand, h10_named = h10_named_rand()
-    h10_wanted = ["identity", "physical", "physical_reverse", "s2_max", "retainedJ_max"]
-    h10_named_use = {k: float(h10_named[k]["err_mHa"]) for k in h10_wanted if k in h10_named}
-    h10_rand_vals = [float(r["err_mHa"]) for r in h10_rand]
-    strip(ax1, h10_rand_vals, h10_named_use, "SQD subspace error (mHa)",
-          f"H10, CAS(10,10) -- {len(h10_rand_vals)} random orderings")
+    med_h10, fold_h10 = strip(ax1, h10_rand_vals, h10_groups, "SQD subspace error (mHa)",
+                               f"H10, CAS(10,10) -- {len(h10_rand_vals)} random orderings",
+                               "H10")
+    med_n2, fold_n2 = strip(ax2, n2_rand_vals, n2_groups, "SQD subspace error (mHa)",
+                             f"N2, CAS(6,10) -- {len(n2_rand_vals)} random orderings",
+                             "N2")
 
-    n2_rand, n2_named = n2_named_rand()
-    n2_wanted = ["identity", "reverse", "max_captured_ORACLE", "max_retainedJ"]
-    n2_named_use = {k: float(n2_named[k]["err_mHa"]) for k in n2_wanted if k in n2_named}
-    n2_rand_vals = [float(r["err_mHa"]) for r in n2_rand]
-    strip(ax2, n2_rand_vals, n2_named_use, "SQD subspace error (mHa)",
-          f"N2, CAS(6,10) -- {len(n2_rand_vals)} random orderings")
-
-    return fig, len(h10_rand_vals), len(n2_rand_vals), np.median(h10_rand_vals), np.median(n2_rand_vals)
+    return fig, len(h10_rand_vals), len(n2_rand_vals), med_h10, med_n2, fold_h10, fold_n2
 
 
 def figure1():
     for style in ("paper", "slide"):
         with plt.rc_context(rc(style)):
-            fig, n_h10, n_n2, med_h10, med_n2 = draw_fig1(style)
+            fig, n_h10, n_n2, med_h10, med_n2, fold_h10, fold_n2 = draw_fig1(style)
             emit(fig, "fig1_effect_exists", style)
     caption(
         "Figure 1",
-        f"The subspace-error effect exists on both search axes. Top: err_mHa for "
-        f"n={n_h10} random same-spin orderings of H10 CAS(10,10) at fixed default "
-        f"anchors (random median {med_h10:.1f} mHa), with identity, physical, "
-        f"physical_reverse, s2_max and retainedJ_max marked. Bottom: n={n_n2} random "
-        f"orderings of N2 CAS(6,10) (random median {med_n2:.1f} mHa), with identity, "
-        f"reverse, max_captured_ORACLE and max_retainedJ marked. Panels use "
-        f"independent x-scales. Source: score_audit_R1.6/all_scores.csv (H10), "
+        f"The subspace-error effect exists on both search axes. Top: SQD subspace "
+        f"error for n={n_h10} random same-spin orderings of H10 CAS(10,10) at fixed "
+        f"default anchors (random median {med_h10:.1f} mHa; max/min = {fold_h10:.1f}x, "
+        f"shaded band), with identity, physical, physical_reverse, s1_max, s2_max and "
+        f"retainedJ_max marked on the strip. Bottom: n={n_n2} random orderings of N2 "
+        f"CAS(6,10) (random median {med_n2:.1f} mHa; max/min = {fold_n2:.1f}x), with "
+        f"identity, reverse, max_captured_ORACLE and retainedJ_max marked (identity and "
+        f"reverse coincide exactly and are shown as one marker). Panels use independent "
+        f"x-scales. Source: score_audit_R1.6/all_scores.csv (H10), "
         f"outputs/stage1/nonoracle_scores.csv (N2)."
     )
 
@@ -258,13 +389,40 @@ def figure1():
 # FIGURE 2 -- the mechanism
 # ========================================================================
 
-def scatter_panel(ax, x, y, s, color, label=None, fit=False):
-    ax.scatter(x, y, s=s["ms"], c=color, alpha=0.55, linewidths=0, zorder=2)
+CEILING = {"N2": 0.9866, "H10": 0.7554}
+
+
+def scatter_panel(ax, x, y, s, color, box_loc="upper_right", show_n=True):
+    ax.scatter(x, y, s=s["ms"], c=color, alpha=1.0, linewidths=0, zorder=2)
     rho, p = spearmanr(x, y)
-    txt = f"$\\rho$={rho:+.3f}\np={p:.1e}\nn={len(x)}"
-    ax.text(0.97, 0.95, txt, transform=ax.transAxes, ha="right", va="top",
+    parts = [f"$\\rho$={rho:+.3f}", f"p={p:.1e}"]
+    if show_n:
+        parts.append(f"n={len(x)}")
+    txt = "\n".join(parts)
+    xy = dict(upper_right=(0.97, 0.95, "right", "top"),
+              upper_left=(0.03, 0.95, "left", "top"))[box_loc]
+    ax.text(xy[0], xy[1], txt, transform=ax.transAxes, ha=xy[2], va=xy[3],
             fontsize=s["tick"])
     return rho, p
+
+
+def _ceiling_line(ax, value, s):
+    ax.axvline(value, color=OI["black"], lw=s["lw"] * 0.9, ls="--", zorder=1, alpha=0.7)
+    ax.annotate("ceiling", xy=(value, 0.97), xycoords=("data", "axes fraction"),
+                xytext=(-3, 0), textcoords="offset points",
+                fontsize=s["tick"] * 0.92, color=OI["black"], ha="right", va="top",
+                rotation=90, alpha=0.8)
+
+
+def _sparse_xticks(ax, n=3, fmt="%.2f"):
+    """Explicit, evenly-spaced tick positions from the axes' own current
+    xlim -- unlike MaxNLocator, this guarantees exactly n ticks, which
+    matters in the narrow multi-column panels below where the default
+    locator's "nice number" ticks can run into each other."""
+    lo, hi = ax.get_xlim()
+    ticks = np.linspace(lo, hi, n)
+    ax.set_xticks(ticks)
+    ax.xaxis.set_major_formatter(mticker.FormatStrFormatter(fmt))
 
 
 def draw_fig2(style):
@@ -284,67 +442,49 @@ def draw_fig2(style):
         per_ord[ordn] = ([float(r["captured"]) for r in sub], [float(r["err_mHa"]) for r in sub])
 
     if style == "paper":
-        # A and B stacked full-width; C as one overlaid scatter (small
-        # multiples do not fit legibly at 85mm with three extra axes).
-        figsize = (PAPER_W, PAPER_W * 2.35)
-        fig, (axA, axB, axC) = plt.subplots(3, 1, figsize=figsize, layout="constrained")
+        # A and B stacked full-width (each needs its own y-ticks, title,
+        # rho/p/n box and a ceiling line -- a narrow 1-of-3 gridspec
+        # column has no room for all of that at 85mm). C is a row of 3
+        # narrow shared-y panels below, same as the slide layout.
+        figsize = (PAPER_W, PAPER_W * 2.55)
+        fig = plt.figure(figsize=figsize, layout="constrained")
+        gs = fig.add_gridspec(3, 3, height_ratios=[1.0, 1.0, 1.0], hspace=0.15, wspace=0.15)
+        axA = fig.add_subplot(gs[0, :])
+        axB = fig.add_subplot(gs[1, :])
+        axC1 = fig.add_subplot(gs[2, 0])
+        axC2 = fig.add_subplot(gs[2, 1], sharey=axC1)
+        axC3 = fig.add_subplot(gs[2, 2], sharey=axC1)
+    else:
+        figsize = (12.4, 6.4)
+        fig = plt.figure(figsize=figsize, layout="constrained")
+        gs = fig.add_gridspec(2, 3, height_ratios=[1.3, 1.0], hspace=0.1, wspace=0.55)
+        axA = fig.add_subplot(gs[0, 0:2])
+        axB = fig.add_subplot(gs[0, 2])
+        axC1 = fig.add_subplot(gs[1, 0])
+        axC2 = fig.add_subplot(gs[1, 1], sharey=axC1)
+        axC3 = fig.add_subplot(gs[1, 2], sharey=axC1)
 
-        rhoA, pA = scatter_panel(axA, n2_cap, n2_err, s, OI["blue"])
-        axA.set_xlabel("captured weight")
-        axA.set_ylabel("SQD subspace error (mHa)")
-        axA.set_title("A -- N2, CAS(6,10)", loc="left", fontsize=s["font"])
-
-        rhoB, pB = scatter_panel(axB, h10_cap, h10_err, s, OI["vermillion"])
-        axB.set_xlabel("captured weight")
-        axB.set_ylabel("SQD subspace error (mHa)")
-        axB.set_title("B -- H10, CAS(10,10)", loc="left", fontsize=s["font"])
-
-        rhosC = {}
-        y0 = 0.97
-        for i, ordn in enumerate(("identity", "physical", "rand007")):
-            cap, err = per_ord[ordn]
-            c = ORDER_COLOR[ordn]
-            axC.scatter(cap, err, s=s["ms"], c=c, alpha=0.6, linewidths=0)
-            rho, p = spearmanr(cap, err)
-            rhosC[ordn] = (rho, p, len(cap))
-            axC.text(0.97, y0 - i * 0.10, f"{ordn}: $\\rho$={rho:+.3f}",
-                     transform=axC.transAxes, ha="right", va="top",
-                     fontsize=s["tick"], color=c)
-        axC.set_xlabel("captured weight")
-        axC.set_ylabel("SQD subspace error (mHa)")
-        axC.set_title("C -- anchor-selection axis\n(3 fixed orderings, n=40 each)",
-                      loc="left", fontsize=s["font"])
-        for a in (axA, axB, axC):
-            clean(a)
-        return fig, (rhoA, pA, len(n2_cap)), (rhoB, pB, len(h10_cap)), rhosC
-
-    figsize = (12.2, 6.2)
-    fig = plt.figure(figsize=figsize, layout="constrained")
-    gs = fig.add_gridspec(2, 3, height_ratios=[1.35, 1.0], hspace=0.08, wspace=0.5)
-    axA = fig.add_subplot(gs[0, 0:2])
-    axB = fig.add_subplot(gs[0, 2])
-    axC1 = fig.add_subplot(gs[1, 0])
-    axC2 = fig.add_subplot(gs[1, 1], sharey=axC1)
-    axC3 = fig.add_subplot(gs[1, 2], sharey=axC1)
-
-    rhoA, pA = scatter_panel(axA, n2_cap, n2_err, s, OI["blue"])
+    rhoA, pA = scatter_panel(axA, n2_cap, n2_err, s, OI["blue"], box_loc="upper_left")
+    _ceiling_line(axA, CEILING["N2"], s)
     axA.set_xlabel("captured weight")
     axA.set_ylabel("SQD subspace error (mHa)")
     axA.set_title("A -- N2, CAS(6,10)", loc="left", fontsize=s["font"])
 
-    rhoB, pB = scatter_panel(axB, h10_cap, h10_err, s, OI["vermillion"])
+    rhoB, pB = scatter_panel(axB, h10_cap, h10_err, s, OI["vermillion"], box_loc="upper_left")
+    _ceiling_line(axB, CEILING["H10"], s)
     axB.set_xlabel("captured weight")
-    axB.set_title("B -- H10, CAS(10,10)", loc="left", fontsize=s["font"])
+    axB.set_title("B -- H10, CAS(10,10)" if style == "paper" else "B -- H10", loc="left", fontsize=s["font"])
 
     rhosC = {}
     panel_titles = {"identity": "C -- identity", "physical": "physical", "rand007": "rand007"}
     for ax, ordn in zip((axC1, axC2, axC3), ("identity", "physical", "rand007")):
         cap, err = per_ord[ordn]
-        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn])
+        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn], show_n=False)
         rhosC[ordn] = (rho, p, len(cap))
         ax.set_xlabel("captured weight")
         ax.set_title(panel_titles[ordn], loc="left", fontsize=s["font"], color=ORDER_COLOR[ordn])
-    axC1.set_ylabel("err (mHa)")
+        _sparse_xticks(ax, 3)
+    axC1.set_ylabel("SQD subspace error (mHa)")
     plt.setp(axC2.get_yticklabels(), visible=False)
     plt.setp(axC3.get_yticklabels(), visible=False)
 
@@ -361,11 +501,13 @@ def figure2():
             emit(fig, "fig2_mechanism", style)
     caption(
         "Figure 2",
-        f"Captured weight predicts subspace error on both search axes, both "
-        f"systems. A: N2 same-spin ordering axis, n={A[2]}, rho={A[0]:+.3f} "
-        f"(p={A[1]:.1e}). B: H10 same-spin ordering axis, n={B[2]}, "
-        f"rho={B[0]:+.3f} (p={B[1]:.1e}). C: H10 anchor-selection axis at three "
-        f"fixed orderings (n=40 triples each): identity rho={C['identity'][0]:+.3f} "
+        f"Captured weight predicts SQD subspace error on both search axes, both "
+        f"systems, with each system's ideal capture ceiling marked (N2: "
+        f"{CEILING['N2']}, H10: {CEILING['H10']}; provided ansatz-capacity values, "
+        f"not fit to these points). A: N2 same-spin ordering axis, n={A[2]}, "
+        f"rho={A[0]:+.3f} (p={A[1]:.1e}). B: H10 same-spin ordering axis, n={B[2]}, "
+        f"rho={B[0]:+.3f} (p={B[1]:.1e}). C: H10 anchor-selection axis at three fixed "
+        f"orderings (n=40 triples each, shared y-axis): identity rho={C['identity'][0]:+.3f} "
         f"(p={C['identity'][1]:.1e}), physical rho={C['physical'][0]:+.3f} "
         f"(p={C['physical'][1]:.1e}), rand007 rho={C['rand007'][0]:+.3f} "
         f"(p={C['rand007'][1]:.1e}). Source: outputs/stage1/nonoracle_scores.csv (A), "
@@ -392,9 +534,9 @@ def figure3_data():
     span_anchor = max(c1_err) - min(c1_err)
 
     return [
-        ("same-spin ordering", span_ordering, "10! = 3,628,800", len(err)),
-        ("free anchor selection", span_anchor, "C(10,3) = 120", len(c1)),
-        ("anchor offset", span_offset, "4", len(off_err)),
+        ("same-spin ordering", span_ordering, 3_628_800, len(err)),
+        ("free anchor selection", span_anchor, 120, len(c1)),
+        ("anchor offset", span_offset, 4, len(off_err)),
     ]
 
 
@@ -408,21 +550,29 @@ def draw_fig3(style):
     spans = [d[1] for d in data]
     colors = [OI["blue"], OI["vermillion"], OI["green"]]
 
-    short_space = {"10! = 3,628,800": "10!", "C(10,3) = 120": "C(10,3)", "4": "4"}
-
     y = np.arange(len(labels))[::-1]
-    ax.barh(y, spans, color=colors, height=0.55)
-    xlim = max(spans) * (1.55 if style == "paper" else 1.75)
-    for yy, d in zip(y, data):
+    ax.barh(y, spans, color=colors, height=0.55, zorder=2)
+    # data-driven cap: the longest bar plus a small margin, not a round
+    # number -- leaves no large empty region
+    xlim = max(spans) * 1.12
+    margin = xlim * 0.025
+    # the search-space exponent sits inside the bar (fixed absolute
+    # margin from its start); the mHa value sits just past the bar's own
+    # tip, in the shared axis margin -- anchoring both labels to a bar's
+    # own (possibly short) length would crowd them together on the
+    # shortest bar, since the two would compete for the same interior
+    for yy, d, col in zip(y, data, colors):
         label, span, space, n = d
-        space_txt = short_space[space] if style == "paper" else space
-        ax.text(span + max(spans) * 0.02, yy,
-                f"{span:.2f} mHa\n({space_txt})" if style == "paper" else
-                f"{span:.2f} mHa  (search space: {space_txt}, n={n})",
-                va="center", ha="left", fontsize=s["tick"], linespacing=1.15)
+        exponent = np.log10(space)
+        ax.text(margin, yy, f"$10^{{{exponent:.1f}}}$",
+                va="center", ha="left", fontsize=s["font"], color="white",
+                fontweight="bold")
+        ax.text(span + margin, yy, f"{span:.2f} mHa",
+                va="center", ha="left", fontsize=s["font"], color=col,
+                fontweight="bold")
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
-    ax.set_xlabel("err_mHa span (max − min)")
+    ax.set_xlabel("SQD subspace error span (mHa)")
     ax.set_xlim(0, xlim)
     clean(ax)
     ax.spines["left"].set_visible(False)
@@ -435,10 +585,15 @@ def figure3():
         with plt.rc_context(rc(style)):
             fig, data = draw_fig3(style)
             emit(fig, "fig3_two_levers", style)
-    parts = "; ".join(f"{d[0].split(chr(10))[0]}: span={d[1]:.2f} mHa over {d[2]} (n={d[3]})" for d in data)
+    parts = "; ".join(
+        f"{d[0]}: span={d[1]:.2f} mHa over a search space of {d[2]:,} "
+        f"(10^{np.log10(d[2]):.1f}; n={d[3]} sampled)"
+        for d in data
+    )
     caption(
         "Figure 3",
-        f"A tiny search space buys a large error span. {parts}. All spans on H10 "
+        f"A tiny search space buys a large SQD subspace error span, across four "
+        f"orders of magnitude of search-space size. {parts}. All spans on H10 "
         f"CAS(10,10) at the fixed default 225-dim budget. Source: "
         f"score_audit_R1.6/all_scores.csv (ordering lever), "
         f"anchor_decomposition_R1.6/c1_all120_identity.csv (free anchor lever), "
@@ -453,15 +608,16 @@ def figure3():
 
 FIG4_ORDERINGS = ["identity", "rand007", "physical"]
 FIG4_FRAC_REGRET = {"identity": 0.217, "rand007": 0.513, "physical": 0.696}
+FULL120_BEST = 224.60  # c1_all120_identity.csv min err_mHa, all 120 triples
 
 
 def draw_fig4(style):
     s = STYLE[style]
-    figsize = (PAPER_W, PAPER_W * 1.55) if style == "paper" else (12.0, 4.6)
+    figsize = (PAPER_W, PAPER_W * 1.75) if style == "paper" else (12.5, 4.8)
     if style == "paper":
-        fig, axes = plt.subplots(3, 1, figsize=figsize, layout="constrained")
+        fig, axes = plt.subplots(3, 1, figsize=figsize, layout="constrained", sharey=True)
     else:
-        fig, axes = plt.subplots(1, 3, figsize=figsize, layout="constrained")
+        fig, axes = plt.subplots(1, 3, figsize=figsize, layout="constrained", sharey=True)
 
     rows = read_csv(ANCHOR_REANALYSIS)
     results = {}
@@ -472,12 +628,9 @@ def draw_fig4(style):
         c = ORDER_COLOR[ordn]
         ax.scatter(x, y, s=s["ms"], c=c, alpha=0.6, linewidths=0, zorder=2)
 
-        coef = np.polyfit(x, y, 1)
-        xs = np.linspace(x.min(), x.max(), 50)
-        ax.plot(xs, np.polyval(coef, xs), color=c, lw=s["lw"], ls="--", zorder=1)
-
         i_top = int(np.argmax(x))
         i_best = int(np.argmin(y))
+        rank_from_bottom = int(np.argsort(x).tolist().index(i_best)) + 1
         ax.scatter([x[i_top]], [y[i_top]], marker="^", s=s["ms"] * 3.5,
                    facecolors="none", edgecolors=OI["black"], linewidths=s["marker_lw"], zorder=3)
         ax.scatter([x[i_best]], [y[i_best]], marker="*", s=s["ms"] * 5,
@@ -488,10 +641,20 @@ def draw_fig4(style):
         ax.text(0.97, 0.95,
                 f"$\\rho$={rho:+.3f}\np={p:.1e}\nregret={frac:.3f}",
                 transform=ax.transAxes, ha="right", va="top", fontsize=s["tick"])
-        ax.set_title(ordn, loc="left", fontsize=s["font"], color=c)
-        ax.set_xlabel("retained_J_oppspin")
+        ax.set_title(f"{ordn}  (n={len(sub)})", loc="left", fontsize=s["font"], color=c)
+        ax.set_xlabel(RETAINED_J_OS_LABEL)
         clean(ax)
-        results[ordn] = (rho, p, frac, len(sub))
+        results[ordn] = (rho, p, frac, len(sub), rank_from_bottom, float(y[i_best]))
+
+        if ordn == "physical":
+            ax.annotate(
+                f"true best ranks {rank_from_bottom}/{len(sub)} from the\n"
+                f"bottom on this score -- the rule points\nthe wrong way here",
+                xy=(x[i_best], y[i_best]), xycoords="data",
+                xytext=(0.30, 0.32), textcoords="axes fraction",
+                fontsize=s["tick"], color=OI["vermillion"], ha="left", va="center",
+                arrowprops=dict(arrowstyle="->", color=OI["vermillion"], lw=s["lw"]),
+            )
     axes[0].set_ylabel("SQD subspace error (mHa)")
 
     handles = [
@@ -515,12 +678,22 @@ def figure4():
         for o in FIG4_ORDERINGS
     )
     n = results["identity"][3]
+    identity_paired_best = results["identity"][5]
     caption(
         "Figure 4",
-        f"The retained_J_oppspin anchor-selection rule degrades as the ordering "
-        f"moves away from identity. Each panel: n={n} anchor triples at a fixed "
-        f"ordering, dashed line is a linear trend, triangle marks the rule's top "
-        f"pick (max retained_J_oppspin), star marks the true best (min err_mHa). "
+        f"The {RETAINED_J_OS_LABEL} anchor-selection rule degrades as the ordering "
+        f"moves away from identity. All three panels use the SAME paired set of "
+        f"n={n} anchor triples (out of the full C(10,3)=120), so the comparison "
+        f"is not confounded by which triples were sampled; over the full 120 "
+        f"triples, identity's true best is {FULL120_BEST:.2f} mHa, slightly better "
+        f"than the {identity_paired_best:.2f} mHa true best within the paired-40 "
+        f"subset plotted here. Triangle marks "
+        f"the rule's top pick (max {RETAINED_J_OS_LABEL}), star marks the true best "
+        f"(min SQD subspace error); no trend line is drawn -- a straight fit would "
+        f"imply a linear model this figure does not claim, so the scatter plus "
+        f"Spearman rho stand on their own. In the physical panel the true best sits "
+        f"near the bottom of the {RETAINED_J_OS_LABEL} distribution (annotated on "
+        f"the panel) -- the rule points in exactly the wrong direction there. "
         f"{parts}. Source: anchor_reanalysis/anchor_reanalysis.csv."
     )
 
@@ -536,26 +709,43 @@ def draw_fig5(style):
 
     rows = {r["ordering"]: r for r in read_csv(F1B_NAMED)}
     orderings = ["identity", "rand007", "physical"]
-    bar_labels = ["floor\n(no opp-spin)", "default\n(p%4==0 anchors)", "best\n(anchor search)"]
-    bar_colors = [OI["black"], OI["orange"], OI["blue"]]
+    default_c, best_c = OI["orange"], OI["blue"]
 
     group_w = 0.75
     bw = group_w / 3
+    penalty = None
     for gi, ordn in enumerate(orderings):
         r = rows[ordn]
         floor = float(r["floor"])
         default = float(r["default"])
         best = float(r["best"])
-        vals = [floor, default, best]
-        xs = [gi - group_w / 2 + bw * (k + 0.5) for k in range(3)]
-        ax.bar(xs, vals, width=bw * 0.92, color=bar_colors)
-        ax.hlines(floor, gi - group_w / 2 - 0.03, gi + group_w / 2 + 0.03,
+        x_floor = gi - group_w / 2 + bw * 0.5
+        x_default = gi - group_w / 2 + bw * 1.5
+        x_best = gi - group_w / 2 + bw * 2.5
+
+        ax.bar([x_floor], [floor], width=bw * 0.92, facecolor="none",
+               edgecolor=OI["black"], hatch="////", lw=s["lw"], zorder=2)
+        ax.bar([x_default], [default], width=bw * 0.92, color=default_c, zorder=2)
+        ax.bar([x_best], [best], width=bw * 0.92, color=best_c, zorder=2)
+
+        ax.hlines(floor, gi - group_w / 2 - 0.02, gi + group_w / 2 + 0.02,
                   color=OI["black"], lw=s["lw"], ls="--", zorder=3)
+
         if default > floor:
-            gap = default - floor
-            ax.annotate(f"+{gap:.2f} mHa", xy=(xs[1], (floor + default) / 2),
-                        xytext=(xs[1] + bw * 1.15, (floor + default) / 2),
+            penalty = default - floor
+            # the penalty sliver is the top of the default bar itself
+            # (already opaque orange), so a *fill* placed behind it would
+            # be invisible -- outline it instead, drawn on top of the bar
+            rect = mpatches.Rectangle(
+                (x_default - bw * 0.46, floor), bw * 0.92, penalty,
+                facecolor="none", edgecolor=OI["vermillion"], lw=s["lw"] * 1.8,
+                zorder=4,
+            )
+            ax.add_patch(rect)
+            ax.annotate(f"+{penalty:.2f} mHa", xy=(x_default, floor + penalty / 2),
+                        xytext=(x_default + bw * 1.05, floor + penalty / 2),
                         fontsize=s["tick"], color=OI["vermillion"], va="center", ha="left",
+                        fontweight="bold",
                         arrowprops=dict(arrowstyle="-", color=OI["vermillion"], lw=s["lw"] * 0.8))
 
     ax.set_xticks(range(len(orderings)))
@@ -563,27 +753,30 @@ def draw_fig5(style):
     ax.set_ylabel("SQD subspace error (mHa)")
     clean(ax)
 
-    handles = [mlines.Line2D([0], [0], color=c, lw=6, label=l.split("\n")[0])
-               for c, l in zip(bar_colors, bar_labels)]
-    fig.legend(handles=handles, loc="outside upper center", ncol=3, frameon=False,
-               fontsize=s["tick"])
-    return fig, rows
+    handles = [
+        mpatches.Patch(facecolor="none", edgecolor=OI["black"], hatch="////", label="floor"),
+        mpatches.Patch(facecolor=default_c, label="default"),
+        mpatches.Patch(facecolor=best_c, label="best"),
+    ]
+    fig.legend(handles=handles, loc="outside upper center", ncol=3,
+               frameon=False, fontsize=s["tick"])
+    return fig, rows, penalty
 
 
 def figure5():
     for style in ("paper", "slide"):
         with plt.rc_context(rc(style)):
-            fig, rows = draw_fig5(style)
+            fig, rows, penalty = draw_fig5(style)
             emit(fig, "fig5_floor_and_limits", style)
-    penalty = float(rows["physical"]["default"]) - float(rows["physical"]["floor"])
     caption(
         "Figure 5",
         f"The opposite-spin coupling mask is not always a net benefit. Grouped "
         f"bars per ordering (n=3: identity, rand007, physical) show floor "
-        f"(same-spin only), default (p%4==0 anchors) and best (anchor search) "
-        f"err_mHa; the dashed line spans each group's own floor. At physical "
-        f"the default sits above its own floor by {penalty:+.2f} mHa -- the "
-        f"opposite-spin mask actively hurts there. Source: "
+        f"(same-spin only, hatched outline), default (anchors at p mod 4 = 0) "
+        f"and best (anchor search) SQD subspace error; the dashed line spans "
+        f"only its own group's floor. At physical the default sits ABOVE its "
+        f"own floor by +{penalty:.2f} mHa (shaded region) -- the opposite-spin "
+        f"mask actively hurts there. Source: "
         f"floor_generalization/f1b_named_orderings.csv."
     )
 
@@ -595,21 +788,27 @@ def figure5():
 VARIANTS = ["s1_amp", "s1_ampJ", "s1_amp_ss", "s1_amp_os", "s1_ampJ_ss",
             "s1_ampJ_os", "s2", "s2_ss", "s2_os", "s2_soft_ss", "retained_J"]
 
+# Readable tick labels, mirrored in results/figures/README.md
 VARIANT_LABEL = {
-    "s1_amp": "s1_amp",
-    "s1_ampJ": "s1_ampJ",
-    "s1_amp_ss": "s1_amp_ss",
-    "s1_amp_os": "s1_amp_os",
-    "s1_ampJ_ss": "s1_ampJ_ss",
-    "s1_ampJ_os": "s1_ampJ_os",
-    "s2": "s2",
-    "s2_ss": "s2_ss",
-    "s2_os": "s2_os",
-    "s2_soft_ss": "s2_soft_ss",
-    "retained_J": "retained_J",
-    "retained_J_samespin": "  ↳ same-spin",
-    "retained_J_oppspin": "  ↳ opp-spin",
+    "s1_amp": "s1, amplitude",
+    "s1_ampJ": "s1, amplitude × J",
+    "s1_amp_ss": "s1, amplitude, same-spin",
+    "s1_amp_os": "s1, amplitude, opposite-spin",
+    "s1_ampJ_ss": "s1, amplitude × J, same-spin",
+    "s1_ampJ_os": "s1, amplitude × J, opposite-spin",
+    "s2": "s2, pairwise score",
+    "s2_ss": "s2, same-spin",
+    "s2_os": "s2, opposite-spin",
+    "s2_soft_ss": "s2, soft same-spin",
+    "retained_J": "retained_J (combined)",
+    "retained_J_samespin": "retained_J (same-spin only)",
+    "retained_J_oppspin": "retained_J (opposite-spin only)",
 }
+
+# The project's own predictive-correlation bar (score_audit.py A2:
+# abs(rho) >= 0.5 and p < 1e-3), reused here as the shaded "not yet useful"
+# band rather than an unexplained round number.
+PREDICTIVE_RHO = 0.5
 
 
 def bootstrap_ci(x, y, seed=0, n_resamples=2000):
@@ -652,22 +851,43 @@ def draw_fig6(style):
     rj_pos = min(len(order), sum(1 for v in order if abs(results[v][0]) > abs(results["retained_J"][0])))
     rows = order[:rj_pos] + ["retained_J", "retained_J_samespin", "retained_J_oppspin"] + order[rj_pos:]
 
-    figsize = (PAPER_W, PAPER_W * 1.55) if style == "paper" else (10.0, 6.5)
+    figsize = (PAPER_W, PAPER_W * 1.65) if style == "paper" else (11.5, 6.5)
     fig, ax = plt.subplots(figsize=figsize, layout="constrained")
+
+    ax.axvspan(-PREDICTIVE_RHO, PREDICTIVE_RHO, color=OI["black"], alpha=0.06, zorder=0)
 
     y = np.arange(len(rows))[::-1]
     for yy, v in zip(y, rows):
         rho, p, lo, hi = results[v]
         is_decomp = v in ("retained_J_samespin", "retained_J_oppspin")
         c = OI["orange"] if is_decomp else OI["blue"]
+        excludes_zero = lo > 0 or hi < 0
         ax.plot([lo, hi], [yy, yy], color=c, lw=s["lw"] * 1.3, zorder=1)
-        ax.scatter([rho], [yy], s=s["ms"] * 1.6, c=c, zorder=2)
+        marker = "o" if excludes_zero else "o"
+        face = c if excludes_zero else "white"
+        ax.scatter([rho], [yy], s=s["ms"] * 1.6, c=face, edgecolors=c,
+                   linewidths=s["marker_lw"], zorder=3, marker=marker)
+        if excludes_zero:
+            ax.annotate("*", xy=(hi, yy), xytext=(4, -1), textcoords="offset points",
+                        fontsize=s["font"] * 1.3, color=c, va="center", ha="left",
+                        fontweight="bold")
 
-    ax.axvline(0, color=OI["black"], lw=s["lw"] * 0.8, zorder=0)
+    def wrap(label):
+        # at 85mm width, the long prose labels (F6d) need more left margin
+        # than the panel can spare on one line; wrap at the last comma so
+        # the same readable text fits in two shorter lines instead.
+        if style != "paper" or len(label) <= 16:
+            return label
+        idx = label.rfind(", ")
+        return label if idx < 0 else label[:idx] + ",\n" + label[idx + 2:]
+
+    ax.axvline(0, color=OI["black"], lw=s["lw"] * 0.8, zorder=2)
     ax.set_yticks(y)
-    ax.set_yticklabels([VARIANT_LABEL[v] for v in rows])
-    ax.set_xlabel("Spearman $\\rho$ vs err_mHa")
-    ax.set_title(f"H10, n={n} random orderings (95% CI)", loc="left", fontsize=s["tick"])
+    ax.set_yticklabels([wrap(VARIANT_LABEL[v]) for v in rows])
+    xlabel = "Spearman $\\rho$ (score vs SQD subspace error)" if style == "slide" else "Spearman $\\rho$"
+    ax.set_xlabel(xlabel)
+    title = f"H10, n={n} random orderings (95% CI)" if style == "slide" else f"H10, n={n}"
+    ax.set_title(title, loc="left", fontsize=s["tick"])
     clean(ax)
     ax.spines["left"].set_visible(False)
     ax.tick_params(left=False)
@@ -682,22 +902,36 @@ def figure6():
     rj = results["retained_J"]
     ss = results["retained_J_samespin"]
     os_ = results["retained_J_oppspin"]
+    excl = [VARIANT_LABEL[v] for v in rows if results[v][2] > 0 or results[v][3] < 0]
     caption(
         "Figure 6",
         f"Eleven score1/score2/retained_J variants (n={n} random H10 orderings), "
-        f"Spearman rho vs err_mHa with bootstrap 95% CI, ordered by |rho|; none "
-        f"reach the predictive bar reliably except captured itself (Figure 2), "
-        f"which is diagnostic-only since it requires the sampling it would "
-        f"replace. retained_J's near-zero combined effect (rho={rj[0]:+.3f}) is "
-        f"a sign cancellation of its same-spin (rho={ss[0]:+.3f}) and "
-        f"opposite-spin (rho={os_[0]:+.3f}) components, shown as adjacent rows. "
-        f"Source: score_audit_R1.6/all_scores.csv."
+        f"Spearman rho vs SQD subspace error with bootstrap 95% CI, ordered by "
+        f"|rho|. The shaded band marks |rho| < {PREDICTIVE_RHO}, the predictive-"
+        f"correlation threshold already used in score_audit.py's own screen "
+        f"(|rho| >= 0.5 and p < 1e-3); every variant here falls inside it except "
+        f"captured itself (Figure 2), which is diagnostic-only since it requires "
+        f"the sampling it would replace. Filled markers with an asterisk have a "
+        f"CI excluding zero ({'; '.join(excl) if excl else 'none'}) but still fall "
+        f"short of the predictive band. retained_J's near-zero combined effect "
+        f"(rho={rj[0]:+.3f}) is a sign cancellation of its same-spin "
+        f"(rho={ss[0]:+.3f}) and opposite-spin (rho={os_[0]:+.3f}) components, "
+        f"shown as adjacent rows. Source: score_audit_R1.6/all_scores.csv."
     )
 
 
 # ========================================================================
 # README + main
 # ========================================================================
+
+def _variant_mapping_table():
+    lines = ["| column | label used in Figure 6 |", "|---|---|"]
+    for v in VARIANTS:
+        lines.append(f"| `{v}` | {VARIANT_LABEL[v]} |")
+    lines.append(f"| `retained_J_samespin` | {VARIANT_LABEL['retained_J_samespin']} |")
+    lines.append(f"| `retained_J_oppspin` | {VARIANT_LABEL['retained_J_oppspin']} |")
+    return "\n".join(lines)
+
 
 README = """\
 # results/figures/ -- regeneration index
@@ -706,25 +940,37 @@ Generated by `experiments/figures.py` (analysis only -- no sampling, no sbd
 calls, no new reference computation). Each figure below can be regenerated
 independently given the listed CSV(s) and columns.
 
+Ordering names are normalised to a single canonical vocabulary everywhere a
+name is drawn on a figure: `identity`, `reverse`, `physical`,
+`physical_reverse`, `s1_max`, `s2_max`, `retainedJ_max`, `rand007`. The
+cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
+`figures.py` maps it to `retainedJ_max` before drawing.
+
 ## Figure 1 -- the effect exists
 - `experiments/outputs/score_audit_R1.6/all_scores.csv`
   columns: `ordering`, `err_mHa` (top panel, H10: 50 random `rand###`
-  orderings, named `identity`/`physical`/`physical_reverse`/`s2_max`/
-  `retainedJ_max`)
+  orderings, named `identity`/`physical`/`physical_reverse`/`s1_max`/
+  `s2_max`/`retainedJ_max`)
 - `outputs/stage1/nonoracle_scores.csv`
   columns: `ordering`, `err_mHa` (bottom panel, N2: 149 random `r###`
   orderings, named `identity`/`reverse`/`max_captured_ORACLE`/
-  `max_retainedJ`). NOTE: this file lives outside `experiments/outputs/` --
-  it is the only cached CSV at the required 149-random-ordering sample size.
+  `retainedJ_max` (renamed from `max_retainedJ`)). NOTE: this file lives
+  outside `experiments/outputs/` -- it is the only cached CSV at the
+  required 149-random-ordering sample size.
+- The shaded band and "Nx" annotation are the random set's own max/min
+  ratio, computed at generation time (not cached).
 
 ## Figure 2 -- the mechanism
 - Panel A (N2, n=149): `outputs/stage1/nonoracle_scores.csv`,
   columns `captured`, `err_mHa` (random `r###` rows only)
 - Panel B (H10, n=50): `experiments/outputs/score_audit_R1.6/all_scores.csv`,
   columns `captured`, `err_mHa` (random `rand###` rows only)
-- Panel C (3x n=40): `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
+- Panel C (3x n=40, shared y-axis): `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
   columns `ordering`, `captured`, `err_mHa`, filtered to
   `identity`/`physical`/`rand007`
+- Ceiling reference lines (N2: 0.9866, H10: 0.7554) are supplied ansatz-
+  capacity constants, not derived from the plotted CSVs -- they are not
+  present in any cached file and are hardcoded in `figures.py` as `CEILING`.
 
 ## Figure 3 -- two levers
 - Same-spin ordering lever: `experiments/outputs/score_audit_R1.6/all_scores.csv`,
@@ -733,13 +979,18 @@ independently given the listed CSV(s) and columns.
   column `err_mHa` (all 120 rows)
 - Anchor-offset lever: `experiments/outputs/anchor_decomposition_R1.6/b1_offset_sweep.csv`,
   columns `ordering`, `anchor_offset`, `err_mHa`, filtered to `ordering=='physical'`
+- Search-space sizes (10! = 3,628,800; C(10,3) = 120; 4) are combinatorial
+  facts about the respective search, not read from a CSV.
 
 ## Figure 4 -- the anchor rule and its limits
 - `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
   columns `ordering`, `triple`, `retained_J_oppspin`, `err_mHa`, filtered to
-  `identity`/`rand007`/`physical` (n=40 each). Fractional regret values
-  (0.217 / 0.513 / 0.696) are taken from
-  `experiments/outputs/anchor_reanalysis/report.txt` (section D2).
+  `identity`/`rand007`/`physical`. All three orderings use the SAME paired
+  set of 40 triples (verified: identical `triple` sets across the three
+  filters), so the panel-to-panel comparison is not confounded by sampling.
+  Fractional regret values (0.217 / 0.513 / 0.696) and the full-120-triple
+  best (224.60 mHa, `anchor_decomposition_R1.6/c1_all120_identity.csv`) are
+  taken from `experiments/outputs/anchor_reanalysis/report.txt` (section D2).
 
 ## Figure 5 -- the no-alpha-beta floor
 - `experiments/outputs/floor_generalization/f1b_named_orderings.csv`,
@@ -752,19 +1003,30 @@ independently given the listed CSV(s) and columns.
   `s1_ampJ`, `s1_amp_ss`, `s1_amp_os`, `s1_ampJ_ss`, `s1_ampJ_os`, `s2`,
   `s2_ss`, `s2_os`, `s2_soft_ss`, `retained_J` (plus its decomposition
   `retained_J_samespin` / `retained_J_oppspin`), computed over the 50 random
-  `rand###` H10 orderings. Spearman rho is exact; 95% CIs are a paired
-  bootstrap (2000 resamples, `scipy.stats.bootstrap`, method='basic') over
-  those same 50 rows, recomputed by `figures.py` at generation time (not
-  cached).
+  `rand###` H10 orderings. Spearman rho is exact; 95% CIs are a manual
+  paired bootstrap (2000 resamples per variant, seeded deterministically
+  from `zlib.crc32` of the column name so re-running reproduces the same
+  figure bit-for-bit) over those same 50 rows, recomputed by `figures.py`
+  at generation time (not cached). The shaded band (|rho| < 0.5) is
+  `score_audit.py`'s own predictive-correlation threshold, reused here
+  rather than an unexplained round number.
+
+### Score-variant label mapping (F6d)
+
+{variant_table}
 
 ## Regenerating
 ```
 python3 experiments/figures.py
 ```
 Outputs `<name>_paper.pdf` / `.png` (85mm width) and `<name>_slide.pdf` /
-`.png` (16:9) per figure into this directory, plus prints all six suggested
-captions to stdout.
-"""
+`.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
+taller than exactly 16:9 where that many rows/panels needed it to stay
+legible and clipping-free) per figure into this directory. Prints all six suggested
+captions to stdout, followed by a render-verification report: for every
+file, its pixel dimensions (read back from the saved PNG with PIL) and
+whether any annotation was found to extend beyond the saved canvas.
+""".format(variant_table=_variant_mapping_table())
 
 
 def main():
@@ -785,6 +1047,18 @@ def main():
     for c in CAPTIONS:
         print(c)
         print()
+
+    print("Render verification (pixel dimensions read back from the saved PNG; "
+          "clipping checked at save dpi against the full canvas):")
+    for r in RENDER_REPORT:
+        dims_ok = r["actual_px"] == r["expected_px"]
+        dims = f"{r['actual_px'][0]}x{r['actual_px'][1]} px"
+        dims_note = "" if dims_ok else f" (expected {r['expected_px'][0]}x{r['expected_px'][1]})"
+        if r["clipped"]:
+            status = f"CLIPPED: {r['clipped']}"
+        else:
+            status = "no annotation extends beyond the saved canvas"
+        print(f"  {r['name']}: {dims}{dims_note} -- {status}")
 
 
 if __name__ == "__main__":

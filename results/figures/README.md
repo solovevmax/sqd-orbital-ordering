@@ -93,6 +93,27 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 | `retained_J_samespin` | retained_J (same-spin only) |
 | `retained_J_oppspin` | retained_J (opposite-spin only) |
 
+## Figure 7 -- lever interaction and spread compression
+- `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
+  columns `ordering`, `err_mHa` (default-anchor "baseline" error), `permutation`
+  (used to derive each ordering's own default anchor triple: position % 4 == 0,
+  where position = argsort(permutation) -- the same convention as
+  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for the 8 orderings
+  (`identity`, `physical`, `rand007`, `rand029`, `rand030`, `rand032`,
+  `rand037`, `rand047`), seed 2026.
+- `experiments/outputs/g1_lite/g1_all.csv`, columns `ordering`, `triple`,
+  `err_mHa`: the 40 sampled anchor triples per ordering (n=320 rows total).
+- Correction applied before drawing (see IMPORTANT note in the Figure 7
+  caption): for each ordering, "best" = min(best-of-the-40-sampled-triples,
+  the default-anchor baseline), since the default triple's error is exactly
+  the baseline value and was absent from the 40-sample pool for 6 of 8
+  orderings. Only rand030 changes under this correction (best-of-40 alone
+  was 180.81 mHa; corrected best = 168.67 mHa, its own default). The
+  per-ordering diff is printed to stdout on every regeneration.
+- Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
+  corrected values at generation time (not cached), using the same manual
+  paired-bootstrap method as Figure 6.
+
 ## Regenerating
 ```
 python3 experiments/figures.py
@@ -100,7 +121,7 @@ python3 experiments/figures.py
 Outputs `<name>_paper.pdf` / `.png` (85mm width) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
-legible and clipping-free) per figure into this directory. Prints all six suggested
-captions to stdout, followed by a render-verification report: for every
-file, its pixel dimensions (read back from the saved PNG with PIL) and
-whether any annotation was found to extend beyond the saved canvas.
+legible and clipping-free) per figure into this directory. Prints all seven
+suggested captions to stdout, followed by a render-verification report: for
+every file, its pixel dimensions (read back from the saved PNG with PIL)
+and whether any annotation was found to extend beyond the saved canvas.

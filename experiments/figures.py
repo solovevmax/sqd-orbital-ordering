@@ -8,15 +8,18 @@ reads cached CSVs already produced by prior experiments, does not sample,
 call sbd, or recompute any reference. Writes results/figures/.
 
 Every figure is emitted in two physical sizes (paper: 85mm single-column,
-slide: 16:9) and two formats (vector PDF, 300dpi PNG) -- six figures x two
-sizes x two formats = 24 image files, plus results/figures/README.md.
+slide: widescreen) and two formats (vector PDF, 300dpi PNG) -- seven
+figures x two sizes x two formats = 28 image files, plus
+results/figures/README.md.
 
-Data provenance note: five of the six figures draw only from
-experiments/outputs/. Figures 1 (bottom panel) and 2 (panel A) need the
-149-random-ordering N2 dataset; the only cached CSV at that exact sample
-size is outputs/stage1/nonoracle_scores.csv (root-level outputs/, not
+Data provenance note: most figures draw only from experiments/outputs/.
+Figures 1 (bottom panel) and 2 (panel A) need the 149-random-ordering N2
+dataset; the only cached CSV at that exact sample size is
+outputs/stage1/nonoracle_scores.csv (root-level outputs/, not
 experiments/outputs/). It is read as-is -- no recomputation -- and the
-exception is called out explicitly in results/figures/README.md.
+exception is called out explicitly in results/figures/README.md. Figure 7
+reads experiments/outputs/g1_lite/ (see that section of the README for the
+default-anchor correction applied before drawing).
 
 Every render is checked before it is written: check_clipping() draws the
 figure at its final save dpi and flags any Text/Legend artist whose window
@@ -66,6 +69,12 @@ OI = dict(
     blue="#0072B2",
     vermillion="#D55E00",
     purple="#CC79A7",
+    # neutral grey: not one of the 8 core Okabe-Ito hues, but a common,
+    # colourblind-safe extension for a "this is not one of the real data
+    # colours" series -- used only for `reverse`, so it never appears
+    # next to a genuine data colour, and specifically so it is
+    # distinguishable from the pure-black random-ordering cloud in Figure 1
+    grey="#666666",
 )
 
 # Canonical ordering-name vocabulary, used verbatim everywhere an ordering
@@ -73,7 +82,10 @@ OI = dict(
 # s1_max, s2_max, retainedJ_max, rand007. Some cached CSVs spell these
 # differently (e.g. N2's "max_retainedJ"); RENAME_ORDERING maps those onto
 # the canonical spelling before anything is drawn or printed.
-RENAME_ORDERING = {"max_retainedJ": "retainedJ_max"}
+RENAME_ORDERING = {
+    "max_retainedJ": "retainedJ_max",
+    "max_captured_ORACLE": "max_captured (oracle)",
+}
 
 ORDER_COLOR = {
     "identity": OI["blue"],
@@ -83,8 +95,8 @@ ORDER_COLOR = {
     "s2_max": OI["orange"],
     "retainedJ_max": OI["sky_blue"],
     "rand007": OI["green"],
-    "reverse": OI["black"],
-    "max_captured_ORACLE": OI["vermillion"],
+    "reverse": OI["grey"],
+    "max_captured (oracle)": OI["vermillion"],
 }
 RANDOM_COLOR = OI["black"]
 
@@ -176,6 +188,26 @@ def check_clipping(fig, dpi):
     return bad, (w_px, h_px)
 
 
+def check_edge_pixels(png_path, border=2, tol=250):
+    """Ground-truth clipping check on the actual saved file: any non-white
+    pixel within `border` pixels of the canvas edge. This exists because
+    check_clipping()'s matplotlib redraw is not always reliable -- for at
+    least one figure here, constrained_layout produced a *different*
+    layout on a redraw than the one it used for the actual savefig() (a
+    label that's inherently wider than its axis is a degenerate case for
+    the solver), so a redraw-based check can pass while the saved PNG
+    itself is clipped. Reading the file back removes that gap entirely."""
+    with Image.open(png_path) as im:
+        arr = np.asarray(im.convert("RGB"))
+    edges = np.concatenate([
+        arr[:border, :, :].reshape(-1, 3),
+        arr[-border:, :, :].reshape(-1, 3),
+        arr[:, :border, :].reshape(-1, 3),
+        arr[:, -border:, :].reshape(-1, 3),
+    ])
+    return bool(np.any(edges < tol))
+
+
 def save(fig, name, style):
     s = STYLE[style]
     pdf = OUTDIR / f"{name}_{style}.pdf"
@@ -195,6 +227,11 @@ def save(fig, name, style):
     with Image.open(png) as im:
         actual_px = im.size
     expected_px = (round(w_in * s["dpi"]), round(h_in * s["dpi"]))
+
+    if check_edge_pixels(png) and not clipped:
+        clipped = ["<pixel-edge check: non-white content touches the canvas "
+                   "border, but the matplotlib redraw check did not identify "
+                   "which artist -- inspect this file visually>"]
 
     RENDER_REPORT.append(dict(
         name=png.name, actual_px=actual_px, expected_px=expected_px, clipped=clipped,
@@ -224,6 +261,7 @@ def caption(fig_id, text):
 # ========================================================================
 
 H10_SCORES = REPO / "experiments" / "outputs" / "score_audit_R1.6" / "all_scores.csv"
+H10_BASELINE = REPO / "experiments" / "outputs" / "h10_baseline_R1.6" / "h10_baseline_results.csv"
 N2_SCORES = REPO / "outputs" / "stage1" / "nonoracle_scores.csv"
 ANCHOR_REANALYSIS = REPO / "experiments" / "outputs" / "anchor_reanalysis" / "anchor_reanalysis.csv"
 C1_ALL120 = REPO / "experiments" / "outputs" / "anchor_decomposition_R1.6" / "c1_all120_identity.csv"
@@ -251,30 +289,36 @@ def n2_named_rand():
 # FIGURE 1 -- the effect exists
 # ========================================================================
 
-def _label_groups(named_vals):
-    """Merge named orderings landing on (near-)identical values, so two
-    markers never sit exactly on top of one another, and return groups
-    sorted by value ascending."""
-    groups = []
+def _label_groups(named_vals, merge_tol=1.0):
+    """Merge named orderings landing within merge_tol mHa of each other
+    (exact ties as well as near-misses like reverse/retainedJ_max, 0.11
+    mHa apart), so two markers never sit exactly on top of one another,
+    and return groups sorted by value ascending. Merged labels are joined
+    in `named_vals`'s own insertion order (e.g. "reverse = retainedJ_max"),
+    not value order, so which name comes first doesn't depend on a
+    difference of a few hundredths of a mHa."""
+    order_index = {label: i for i, label in enumerate(named_vals)}
+    groups = []  # each: [display_label, representative_val, [members]]
     for label, val in sorted(named_vals.items(), key=lambda kv: kv[1]):
-        if groups and abs(val - groups[-1][1]) < 1e-6:
-            groups[-1] = (groups[-1][0] + " = " + label, groups[-1][1])
+        if groups and abs(val - groups[-1][1]) < merge_tol:
+            groups[-1][2].append(label)
+            groups[-1][0] = " = ".join(sorted(groups[-1][2], key=lambda l: order_index[l]))
         else:
-            groups.append((label, val))
-    return groups
+            groups.append([label, val, [label]])
+    return [(label, val) for label, val, _members in groups]
 
 
 def draw_fig1(style):
     s = STYLE[style]
 
     h10_rand, h10_named = h10_named_rand()
-    h10_wanted = ["identity", "physical", "physical_reverse", "s1_max", "s2_max", "retainedJ_max"]
+    h10_wanted = ["identity", "reverse", "physical", "physical_reverse", "s1_max", "s2_max", "retainedJ_max"]
     h10_named_use = {k: float(h10_named[k]["err_mHa"]) for k in h10_wanted if k in h10_named}
     h10_rand_vals = [float(r["err_mHa"]) for r in h10_rand]
     h10_groups = _label_groups(h10_named_use)
 
     n2_rand, n2_named = n2_named_rand()
-    n2_wanted = ["identity", "reverse", "max_captured_ORACLE", "retainedJ_max"]
+    n2_wanted = ["identity", "reverse", "max_captured (oracle)", "retainedJ_max"]
     n2_named_use = {k: float(n2_named[k]["err_mHa"]) for k in n2_wanted if k in n2_named}
     n2_rand_vals = [float(r["err_mHa"]) for r in n2_rand]
     n2_groups = _label_groups(n2_named_use)
@@ -375,13 +419,14 @@ def figure1():
         f"The subspace-error effect exists on both search axes. Top: SQD subspace "
         f"error for n={n_h10} random same-spin orderings of H10 CAS(10,10) at fixed "
         f"default anchors (random median {med_h10:.1f} mHa; max/min = {fold_h10:.1f}x, "
-        f"shaded band), with identity, physical, physical_reverse, s1_max, s2_max and "
-        f"retainedJ_max marked on the strip. Bottom: n={n_n2} random orderings of N2 "
-        f"CAS(6,10) (random median {med_n2:.1f} mHa; max/min = {fold_n2:.1f}x), with "
-        f"identity, reverse, max_captured_ORACLE and retainedJ_max marked (identity and "
-        f"reverse coincide exactly and are shown as one marker). Panels use independent "
-        f"x-scales. Source: score_audit_R1.6/all_scores.csv (H10), "
-        f"outputs/stage1/nonoracle_scores.csv (N2)."
+        f"shaded band), with identity, reverse, physical, physical_reverse, s1_max, "
+        f"s2_max and retainedJ_max marked on the strip (reverse and retainedJ_max are "
+        f"only 0.11 mHa apart and are shown as one joint marker/label). Bottom: n={n_n2} "
+        f"random orderings of N2 CAS(6,10) (random median {med_n2:.1f} mHa; max/min = "
+        f"{fold_n2:.1f}x), with identity, reverse, max_captured (oracle) and "
+        f"retainedJ_max marked (identity and reverse coincide exactly and are shown as "
+        f"one marker). Panels use independent x-scales. Source: "
+        f"score_audit_R1.6/all_scores.csv (H10), outputs/stage1/nonoracle_scores.csv (N2)."
     )
 
 
@@ -479,7 +524,7 @@ def draw_fig2(style):
     panel_titles = {"identity": "C -- identity", "physical": "physical", "rand007": "rand007"}
     for ax, ordn in zip((axC1, axC2, axC3), ("identity", "physical", "rand007")):
         cap, err = per_ord[ordn]
-        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn], show_n=False)
+        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn])
         rhosC[ordn] = (rho, p, len(cap))
         ax.set_xlabel("captured weight")
         ax.set_title(panel_titles[ordn], loc="left", fontsize=s["font"], color=ORDER_COLOR[ordn])
@@ -648,10 +693,12 @@ def draw_fig4(style):
 
         if ordn == "physical":
             ax.annotate(
-                f"true best ranks {rank_from_bottom}/{len(sub)} from the\n"
-                f"bottom on this score -- the rule points\nthe wrong way here",
+                f"true best ranks {rank_from_bottom}/{len(sub)} from\n"
+                f"the bottom on this score --\n"
+                f"the rule points the wrong\n"
+                f"way here",
                 xy=(x[i_best], y[i_best]), xycoords="data",
-                xytext=(0.30, 0.32), textcoords="axes fraction",
+                xytext=(0.06, 0.32), textcoords="axes fraction",
                 fontsize=s["tick"], color=OI["vermillion"], ha="left", va="center",
                 arrowprops=dict(arrowstyle="->", color=OI["vermillion"], lw=s["lw"]),
             )
@@ -742,11 +789,15 @@ def draw_fig5(style):
                 zorder=4,
             )
             ax.add_patch(rect)
+            # shrinkB leaves a gap between the leader line and the text --
+            # without it the line runs flush into the "+" glyph and the
+            # two visually fuse into what reads as a "+/-" sign
             ax.annotate(f"+{penalty:.2f} mHa", xy=(x_default, floor + penalty / 2),
                         xytext=(x_default + bw * 1.05, floor + penalty / 2),
                         fontsize=s["tick"], color=OI["vermillion"], va="center", ha="left",
                         fontweight="bold",
-                        arrowprops=dict(arrowstyle="-", color=OI["vermillion"], lw=s["lw"] * 0.8))
+                        arrowprops=dict(arrowstyle="-", color=OI["vermillion"], lw=s["lw"] * 0.8,
+                                         shrinkA=0, shrinkB=6))
 
     ax.set_xticks(range(len(orderings)))
     ax.set_xticklabels(orderings)
@@ -921,6 +972,237 @@ def figure6():
 
 
 # ========================================================================
+# FIGURE 7 -- lever interaction and spread compression
+# ========================================================================
+
+G1_LITE_DIR = REPO / "experiments" / "outputs" / "g1_lite"
+G1_ALL = G1_LITE_DIR / "g1_all.csv"
+
+FIG7_ORDERINGS = ["identity", "physical", "rand030", "rand037",
+                   "rand007", "rand032", "rand047", "rand029"]
+FIG7_HIGHLIGHT = {"rand029": OI["vermillion"], "rand030": OI["blue"]}
+FIG7_OTHER = "#888888"
+
+CHANGE_REPORT = []
+
+
+def _default_anchor_triple(permutation_str):
+    """The default anchor rule is position % 4 == 0 (run_ordering_pipeline
+    CFG['anchor_mod']=4), where "position" is where an orbital sits in the
+    ordering's own layout -- not the raw orbital index. positions_from()
+    computes this as argsort(perm): pos[orbital] = its layout position."""
+    perm = np.array([int(c) for c in permutation_str])
+    pos = np.argsort(perm)
+    return tuple(sorted(int(o) for o in range(len(perm)) if pos[o] % 4 == 0))
+
+
+def figure7_data():
+    base_rows = read_csv(H10_BASELINE)
+    baseline = {}
+    permutation = {}
+    for r in base_rows:
+        if r["ordering"] in FIG7_ORDERINGS and r["seed"] == "2026" and r["ordering"] not in baseline:
+            baseline[r["ordering"]] = float(r["err_mHa"])
+            permutation[r["ordering"]] = r["permutation"]
+
+    all_rows = read_csv(G1_ALL)
+    best40 = {}
+    best40_triple = {}
+    sampled_triples = {}
+    for ordn in FIG7_ORDERINGS:
+        sub = [r for r in all_rows if r["ordering"] == ordn]
+        triples = {}
+        for r in sub:
+            t = tuple(int(x) for x in r["triple"].strip("()").replace(" ", "").split(","))
+            triples[t] = float(r["err_mHa"])
+        sampled_triples[ordn] = triples
+        best_t = min(triples, key=triples.get)
+        best40[ordn] = triples[best_t]
+        best40_triple[ordn] = best_t
+
+    # IMPORTANT check: is each ordering's own default anchor triple part of
+    # its 40 sampled candidates? If not, best-of-40 alone can be *worse*
+    # than the ordering's actual default -- exactly what happens for
+    # rand030 (best40=180.81 > its own baseline/default=168.67), which is
+    # only possible if the default was excluded from the candidate pool.
+    corrected = {}
+    default_triple = {}
+    CHANGE_REPORT.clear()
+    for ordn in FIG7_ORDERINGS:
+        dt = _default_anchor_triple(permutation[ordn])
+        default_triple[ordn] = dt
+        in_pool = dt in sampled_triples[ordn]
+        # the default triple's err_mHa is exactly the baseline evaluation
+        # (that IS what "baseline" means: default-anchor, default ordering)
+        best_with_default = min(best40[ordn], baseline[ordn])
+        corrected[ordn] = best_with_default
+        if best_with_default < best40[ordn] - 1e-9:
+            CHANGE_REPORT.append(
+                f"{ordn}: default triple {dt} was NOT in its 40 sampled candidates; "
+                f"best-of-40 alone gave {best40[ordn]:.2f} mHa, corrected "
+                f"(best-of-40 UNION default) = {best_with_default:.2f} mHa "
+                f"({best40[ordn] - best_with_default:+.2f} mHa)"
+            )
+        elif not in_pool:
+            CHANGE_REPORT.append(
+                f"{ordn}: default triple {dt} was NOT in its 40 sampled candidates, "
+                f"but best-of-40 ({best40[ordn]:.2f} mHa) already beat the default "
+                f"({baseline[ordn]:.2f} mHa) anyway -- no change"
+            )
+
+    return dict(baseline=baseline, best40=best40, corrected=corrected,
+                default_triple=default_triple, best40_triple=best40_triple)
+
+
+def draw_fig7(style):
+    s = STYLE[style]
+    d = figure7_data()
+    baseline, corrected = d["baseline"], d["corrected"]
+
+    figsize = (PAPER_W, PAPER_W * 2.05) if style == "paper" else (12.5, 6.2)
+    if style == "paper":
+        fig, (axA, axB) = plt.subplots(2, 1, figsize=figsize, layout="constrained",
+                                        height_ratios=[1.35, 1.0])
+    else:
+        fig, (axA, axB) = plt.subplots(1, 2, figsize=figsize, layout="constrained",
+                                        width_ratios=[1.5, 1.0])
+
+    # ---------------- Panel A: slopegraph ----------------
+    b_vals_by_name = {o: baseline[o] for o in FIG7_ORDERINGS}
+    c_vals = np.array([corrected[o] for o in FIG7_ORDERINGS])
+    b_vals = np.array([baseline[o] for o in FIG7_ORDERINGS])
+    b_span = b_vals.max() - b_vals.min()
+    c_span = c_vals.max() - c_vals.min()
+    compression = b_span / c_span
+
+    for ordn in FIG7_ORDERINGS:
+        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
+        lw = s["lw"] * 2.2 if ordn in FIG7_HIGHLIGHT else s["lw"] * 1.1
+        z = 3 if ordn in FIG7_HIGHLIGHT else 2
+        axA.plot([0, 1], [baseline[ordn], corrected[ordn]], color=c, lw=lw,
+                 marker="o", ms=s["ms"] * 0.35, zorder=z)
+
+    # left-side labels: several baselines sit within a few mHa of a
+    # neighbour (e.g. physical/rand047 6.6 mHa apart) and would overlap
+    # if placed exactly at their own y -- greedily push apart labels
+    # that are closer than min_gap, same idea as Figure 1's staircase,
+    # but nudging locally instead of stacking into fully separate rows
+    order_by_val = sorted(FIG7_ORDERINGS, key=lambda o: b_vals_by_name[o])
+    min_gap = b_span * 0.075
+    label_y = {}
+    prev = None
+    for ordn in order_by_val:
+        y = b_vals_by_name[ordn]
+        if prev is not None and y < prev + min_gap:
+            y = prev + min_gap
+        label_y[ordn] = y
+        prev = y
+
+    for ordn in FIG7_ORDERINGS:
+        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
+        ly = label_y[ordn]
+        true_y = b_vals_by_name[ordn]
+        if abs(ly - true_y) > 1e-6:
+            axA.plot([-0.14, -0.03], [ly, true_y], color=c, lw=s["lw"] * 0.5, alpha=0.6, zorder=1)
+        axA.text(-0.16, ly, ordn, ha="right", va="center", fontsize=s["tick"], color=c,
+                 fontweight="bold" if ordn in FIG7_HIGHLIGHT else "normal")
+
+    xpad = 0.62
+    axA.annotate("", xy=(-xpad, b_vals.max()), xytext=(-xpad, b_vals.min()),
+                 arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"]))
+    axA.text(-xpad - 0.05, (b_vals.max() + b_vals.min()) / 2, f"{b_span:.2f} mHa",
+             ha="right", va="center", fontsize=s["tick"], rotation=90)
+    axA.annotate("", xy=(1 + xpad, c_vals.max()), xytext=(1 + xpad, c_vals.min()),
+                 arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"]))
+    # the compression factor lives right next to the spread it produced,
+    # rather than as a separate floating label competing for space with
+    # the ordering names on the crowded left side of the plot
+    axA.text(1 + xpad + 0.05, (c_vals.max() + c_vals.min()) / 2,
+             f"{c_span:.2f} mHa\n({compression:.1f}$\\times$ tighter)",
+             ha="left", va="center", fontsize=s["tick"], color=OI["vermillion"],
+             fontweight="bold")
+
+    axA.set_xlim(-xpad - 0.85, 1 + xpad + 0.75)
+    axA.set_ylim(b_vals.min() - b_span * 0.06, b_vals.max() + b_span * 0.06)
+    axA.set_xticks([0, 1])
+    axA.set_xticklabels(["default", "best\n(40 sampled ∪ default)"])
+    axA.set_ylabel("SQD subspace error (mHa)")
+    axA.tick_params(right=True, labelright=True)
+    axA.set_title("A -- n=8 orderings", loc="left", fontsize=s["font"])
+    for spine in ("top",):
+        axA.spines[spine].set_visible(False)
+
+    # ---------------- Panel B: scatter ----------------
+    lo = min(b_vals.min(), c_vals.min())
+    hi = max(b_vals.max(), c_vals.max())
+    pad = (hi - lo) * 0.08
+    axB.plot([lo - pad, hi + pad], [lo - pad, hi + pad], color=OI["black"],
+             lw=s["lw"] * 0.8, ls=":", zorder=1)
+    for ordn in FIG7_ORDERINGS:
+        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
+        axB.scatter([baseline[ordn]], [corrected[ordn]], s=s["ms"] * 2.2, c=c,
+                    zorder=3, edgecolors="white", linewidths=s["marker_lw"] * 0.5)
+    rho, p = spearmanr(b_vals, c_vals)
+    ci_lo, ci_hi = bootstrap_ci(b_vals, c_vals, seed=zlib.crc32(b"g1_lite_fig7"))
+    axB.text(0.03, 0.97,
+             f"$\\rho$={rho:+.3f}\np={p:.3f}\n95% CI [{ci_lo:+.2f}, {ci_hi:+.2f}]\n"
+             f"n=8 -- inconclusive",
+             transform=axB.transAxes, ha="left", va="top", fontsize=s["tick"])
+    axB.set_xlim(lo - pad, hi + pad)
+    axB.set_ylim(lo - pad, hi + pad)
+    # kept short deliberately: at slide width this label is inherently
+    # wider than axB itself, which makes constrained_layout's solution
+    # unstable across repeated draws (it can fit on one draw and clip on
+    # the next) -- shortening it so it fits within axB by construction
+    # removes the instability rather than gambling on the solver
+    axB.set_xlabel("default-anchor error (mHa)")
+    axB.set_ylabel("best-anchor error (mHa)")
+    axB.set_title("B -- y=x reference", loc="left", fontsize=s["font"])
+    clean(axB)
+
+    return fig, dict(baseline=baseline, corrected=corrected, b_span=b_span,
+                      c_span=c_span, compression=compression, rho=rho, p=p,
+                      ci=(ci_lo, ci_hi))
+
+
+def figure7():
+    for style in ("paper", "slide"):
+        with plt.rc_context(rc(style)):
+            fig, r = draw_fig7(style)
+            emit(fig, "fig7_lever_interaction", style)
+    caption(
+        "Figure 7",
+        f"Do the two levers (same-spin ordering, anchor selection) interact? For "
+        f"n=8 H10 orderings (identity, physical, the best/median/worst 2 baselines "
+        f"of the 50 random orderings), Panel A connects each ordering's default-"
+        f"anchor error to its best-of-{{40 sampled anchor triples UNION its own "
+        f"default triple}} error. The baseline spread is {r['b_span']:.2f} mHa; "
+        f"after anchor optimisation it compresses to {r['c_span']:.2f} mHa -- a "
+        f"{r['compression']:.1f}x reduction, so ordering still matters "
+        f"post-optimisation, just far less. rand029 (worst baseline, "
+        f"{r['baseline']['rand029']:.2f}->{r['corrected']['rand029']:.2f} mHa) and "
+        f"rand030 (best baseline, {r['baseline']['rand030']:.2f}->"
+        f"{r['corrected']['rand030']:.2f} mHa) are highlighted: rand029 climbs from "
+        f"worst to mid-pack and crosses several other orderings' lines, while "
+        f"rand030 -- once its own default anchor is correctly included in its "
+        f"candidate pool -- stays the single best ordering both before and after, "
+        f"crossing no one. Panel B: baseline vs best-anchor error, n=8, with the "
+        f"y=x reference; Spearman rho={r['rho']:+.3f} (p={r['p']:.3f}, bootstrap "
+        f"95% CI [{r['ci'][0]:+.2f}, {r['ci'][1]:+.2f}]) -- at n=8 this is "
+        f"inconclusive, not evidence of no relationship; the CI spans from "
+        f"strongly negative to perfectly positive. IMPORTANT DATA NOTE: the "
+        f"original best-of-40 values did not include each ordering's own default "
+        f"anchor triple in its 40-sample candidate pool for 7 of 8 orderings "
+        f"(only identity and rand037's own default happened to already be among "
+        f"their 40 samples); this is silently harmless unless the default beats "
+        f"every sampled alternative, which happens for exactly one ordering here "
+        f"(rand030). All values in this figure are the corrected "
+        f"(40-sample UNION default) best -- see stdout for the itemised diff "
+        f"against the uncorrected best-of-40. Source: experiments/outputs/g1_lite/."
+    )
+
+
+# ========================================================================
 # README + main
 # ========================================================================
 
@@ -1015,6 +1297,27 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 
 {variant_table}
 
+## Figure 7 -- lever interaction and spread compression
+- `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
+  columns `ordering`, `err_mHa` (default-anchor "baseline" error), `permutation`
+  (used to derive each ordering's own default anchor triple: position % 4 == 0,
+  where position = argsort(permutation) -- the same convention as
+  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for the 8 orderings
+  (`identity`, `physical`, `rand007`, `rand029`, `rand030`, `rand032`,
+  `rand037`, `rand047`), seed 2026.
+- `experiments/outputs/g1_lite/g1_all.csv`, columns `ordering`, `triple`,
+  `err_mHa`: the 40 sampled anchor triples per ordering (n=320 rows total).
+- Correction applied before drawing (see IMPORTANT note in the Figure 7
+  caption): for each ordering, "best" = min(best-of-the-40-sampled-triples,
+  the default-anchor baseline), since the default triple's error is exactly
+  the baseline value and was absent from the 40-sample pool for 6 of 8
+  orderings. Only rand030 changes under this correction (best-of-40 alone
+  was 180.81 mHa; corrected best = 168.67 mHa, its own default). The
+  per-ordering diff is printed to stdout on every regeneration.
+- Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
+  corrected values at generation time (not cached), using the same manual
+  paired-bootstrap method as Figure 6.
+
 ## Regenerating
 ```
 python3 experiments/figures.py
@@ -1022,10 +1325,10 @@ python3 experiments/figures.py
 Outputs `<name>_paper.pdf` / `.png` (85mm width) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
-legible and clipping-free) per figure into this directory. Prints all six suggested
-captions to stdout, followed by a render-verification report: for every
-file, its pixel dimensions (read back from the saved PNG with PIL) and
-whether any annotation was found to extend beyond the saved canvas.
+legible and clipping-free) per figure into this directory. Prints all seven
+suggested captions to stdout, followed by a render-verification report: for
+every file, its pixel dimensions (read back from the saved PNG with PIL)
+and whether any annotation was found to extend beyond the saved canvas.
 """.format(variant_table=_variant_mapping_table())
 
 
@@ -1036,12 +1339,21 @@ def main():
     figure4()
     figure5()
     figure6()
+    figure7()
 
     (OUTDIR / "README.md").write_text(README)
 
     print(f"\nWrote {len(ALL_WRITTEN)} figure files to {OUTDIR}:")
     for name in sorted(ALL_WRITTEN):
         print(f"  {name}")
+
+    print("\nFigure 7 default-anchor-inclusion check (best-of-40 vs "
+          "best-of-40-UNION-default):")
+    if CHANGE_REPORT:
+        for line in CHANGE_REPORT:
+            print(f"  {line}")
+    else:
+        print("  no orderings changed")
 
     print("\nSuggested captions:\n")
     for c in CAPTIONS:

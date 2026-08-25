@@ -1,0 +1,34 @@
+{
+  "part": "G1_lite",
+  "git_commit": "dbff9c17f857657365e42858cbdeb4b5bf234f6c",
+  "shots": 2000000,
+  "seed": 2026,
+  "rng_seed": 20260825003,
+  "n_triples": 40,
+  "orderings": [
+    "identity",
+    "physical",
+    "rand030",
+    "rand037",
+    "rand007",
+    "rand032",
+    "rand047",
+    "rand029"
+  ],
+  "n_new_evaluations": 256,
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "rho_baseline_best40": 0.4047619047619048,
+  "p_rho": 0.3198886412288164,
+  "spread_best40": 59.844610123820814,
+  "global_best_ordering": "rand037",
+  "global_best_triple": "(3, 6, 9)",
+  "global_best_err": 170.467823216252,
+  "shared_wins": {
+    "(1, 7, 9)": [
+      "identity",
+      "rand029"
+    ]
+  },
+  "generated": "2026-08-25T16:01:18"
+}

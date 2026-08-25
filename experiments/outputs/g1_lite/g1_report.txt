@@ -1,0 +1,48 @@
+
+==============================================================================
+G1-LITE -- DO THE LEVERS INTERACT?
+==============================================================================
+8 orderings: ['identity', 'physical', 'rand030', 'rand037', 'rand007', 'rand032', 'rand047', 'rand029']
+  best2=['rand030', 'rand037']  median2=['rand007', 'rand032']  worst2=['rand047', 'rand029']
+  identity   baseline_err=300.32
+  physical   baseline_err=389.71
+  rand030    baseline_err=168.67
+  rand037    baseline_err=175.60
+  rand007    baseline_err=261.60
+  rand032    baseline_err=264.78
+  rand047    baseline_err=383.16
+  rand029    baseline_err=454.89
+
+40 shared anchor triples drawn (rng seed 20260825003)
+floors available for all 8 from E1/F1c reuse: True (missing: [])
+
+==============================================================================
+Per-ordering report
+==============================================================================
+  identity   baseline= 300.32  floor= 458.70  best_of_40= 230.31  winning_triple=(1, 7, 9)
+  physical   baseline= 389.71  floor= 379.25  best_of_40= 175.17  winning_triple=(2, 3, 7)
+  rand030    baseline= 168.67  floor= 253.99  best_of_40= 180.81  winning_triple=(1, 6, 9)
+  rand037    baseline= 175.60  floor= 306.39  best_of_40= 170.47  winning_triple=(3, 6, 9)
+  rand007    baseline= 261.60  floor= 372.86  best_of_40= 184.33  winning_triple=(2, 5, 9)
+  rand032    baseline= 264.78  floor= 301.29  best_of_40= 172.97  winning_triple=(0, 2, 4)
+  rand047    baseline= 383.16  floor= 465.70  best_of_40= 181.38  winning_triple=(0, 1, 6)
+  rand029    baseline= 454.89  floor= 454.97  best_of_40= 186.74  winning_triple=(1, 7, 9)
+
+==============================================================================
+Analysis
+==============================================================================
+  rho(baseline_err, best_of_40_err) across 8 orderings = +0.405  p=3.20e-01
+
+  global best (ordering, anchor) = (rand037, (3, 6, 9)), err_mHa=170.47
+  that ordering's baseline percentile among the 8: 75.0% (baseline_err=175.60)
+
+  spread of best-of-40 across the 8 orderings: 59.84 mHa (vs 286.23 mHa baseline spread across all 50 random orderings)
+
+  triples that win (best-of-40) for more than one ordering: 1
+    (1, 7, 9): wins for ['identity', 'rand029']
+
+==============================================================================
+HEADLINE
+==============================================================================
+After anchor optimisation, does same-spin ordering still matter? spread of best-of-40 = 59.84 mHa -> YES
+Does baseline ranking predict post-optimisation ranking? rho=+0.405 (p=3.20e-01) -> NOT clearly

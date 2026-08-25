@@ -1,0 +1,66 @@
+
+==============================================================================
+V1 -- SIGN CONVENTION
+==============================================================================
+Definitions used (from experiments/lucj_control.py source):
+  err_lucj = (E_lucj - E_CASCI) * 1000   [E_lucj = <psi|H|psi>/<psi|psi> of the masked
+             LUCJ state applied to HF - a variational upper bound on E_CASCI]
+  err_sqd  = (energy - E_CASCI) * 1000   [energy = sbd's subspace-diagonalised energy -
+             also a variational upper bound within the selected determinant subspace]
+Both are (approximate - exact)*1000: positive, lower-is-better, SAME convention.
+
+All err_lucj > 0? True  min=450.5338
+All err_sqd > 0? True  min=224.5989
+Verified: both positive, both lower-is-better -> correlations are NOT sign-flipped.
+
+identity: floor=458.70  n_floor_triples=17/120
+
+physical: floor=379.25  n_floor_triples=0/40
+
+rand007: floor=372.86  n_floor_triples=3/40
+
+==============================================================================
+V2/V3 -- rho(err_lucj, err_sqd) WITH and WITHOUT floor triples
+==============================================================================
+
+identity (n=120, n_floor=17):
+  rho(err_lucj, err_sqd) ALL triples:        +0.527  p=6.08e-10
+  rho(err_lucj, err_sqd) FLOOR EXCLUDED:     +0.475  p=4.11e-07
+  collapsed toward zero (|rho|<0.3 or p>0.05)? False
+
+physical (n=40, n_floor=0):
+  rho(err_lucj, err_sqd) ALL triples:        -0.160  p=3.25e-01
+  rho(err_lucj, err_sqd) FLOOR EXCLUDED:     -0.160  p=3.25e-01
+  collapsed toward zero (|rho|<0.3 or p>0.05)? True
+
+rand007 (n=40, n_floor=3):
+  rho(err_lucj, err_sqd) ALL triples:        +0.107  p=5.09e-01
+  rho(err_lucj, err_sqd) FLOOR EXCLUDED:     +0.198  p=2.41e-01
+  collapsed toward zero (|rho|<0.3 or p>0.05)? True
+
+==============================================================================
+V4 -- rho(err_lucj, captured_sqd) at all three chains
+==============================================================================
+
+identity: rho(err_lucj, captured_sqd) ALL = -0.513 (p=2.07e-09)   FLOOR EXCLUDED = -0.425 (p=7.84e-06)
+
+physical: rho(err_lucj, captured_sqd) ALL = +0.195 (p=2.27e-01)   FLOOR EXCLUDED = +0.195 (p=2.27e-01)
+
+rand007: rho(err_lucj, captured_sqd) ALL = -0.014 (p=9.33e-01)   FLOOR EXCLUDED = -0.091 (p=5.91e-01)
+
+==============================================================================
+V5 -- rho(err_lucj, retained_J_oppspin) at all three chains
+==============================================================================
+
+identity: rho(err_lucj, retained_J_oppspin) ALL = -0.791 (p=6.05e-27)   FLOOR EXCLUDED = -0.850 (p=6.49e-30)
+
+physical: rho(err_lucj, retained_J_oppspin) ALL = +0.319 (p=4.50e-02)   FLOOR EXCLUDED = +0.319 (p=4.50e-02)
+
+rand007: rho(err_lucj, retained_J_oppspin) ALL = +0.211 (p=1.90e-01)   FLOOR EXCLUDED = +0.170 (p=3.15e-01)
+
+==============================================================================
+VERDICT
+==============================================================================
+  identity: rho survives floor exclusion (+0.475, p=4.11e-07)
+
+Does ansatz quality predict SQD outcome, at any chain, once floor triples are removed? YES, at the chain(s) listed above.

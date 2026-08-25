@@ -1,0 +1,55 @@
+{
+  "part": "E2_budget_transfer",
+  "git_commit": "6402c8b63a223dc085a0d716f53a0731f4d25198",
+  "shots": 2000000,
+  "seed": 2026,
+  "budgets_identity": [
+    5,
+    8,
+    10,
+    15
+  ],
+  "budgets_transfer": [
+    8
+  ],
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "c1_csv_sha256": "476b4eff830918afe7601c716f65fd1466c5fdb10f9d4cf7fb9d819bf90fadd5",
+  "c2_csv_sha256": "a258d5783a32ca16b961279d29e88e0d5e23f1e4b7b3343ab789c7fdbaff7dea",
+  "d_rows": [
+    {
+      "budget": 5,
+      "n_ok": 120,
+      "rho": 0.2114291194139036,
+      "p": 0.02044288760848539,
+      "mean_wall_s": 1.1066905756791432
+    },
+    {
+      "budget": 8,
+      "n_ok": 120,
+      "rho": 0.16869477487210774,
+      "p": 0.06549861417370252,
+      "mean_wall_s": 1.1239526391029357
+    },
+    {
+      "budget": 10,
+      "n_ok": 120,
+      "rho": 0.633185234798408,
+      "p": 8.506468715019976e-15,
+      "mean_wall_s": 1.1256883402665456
+    },
+    {
+      "budget": 15,
+      "n_ok": 120,
+      "rho": 0.9999999999999998,
+      "p": 0.0,
+      "mean_wall_s": 1.1314200361569722
+    }
+  ],
+  "top3_regrets": {
+    "physical": 92.50077205755679,
+    "rand007": 14.183786377064877
+  },
+  "id_top3_regret": 22.678583280647445,
+  "cost_ratio_15_over_8": 1.0066438716314563,
+  "generated": "2026-08-25T11:47:47"
+}

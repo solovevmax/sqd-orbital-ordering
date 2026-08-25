@@ -1,0 +1,67 @@
+
+==============================================================================
+E2 -- BUDGET TRANSFER SCREENING
+==============================================================================
+
+==============================================================================
+Identity: all 120 triples at budgets {5, 8, 10, 15}
+==============================================================================
+
+==============================================================================
+Identity: rho vs 15-dim ranking, regret, timing
+==============================================================================
+
+  budget=5  n_ok=120  rho(budget-err, 15dim-ref-err)=+0.211 (p=2.04e-02)  mean_wall_s=1.11
+    top-1 by budget-5 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-3 by budget-5 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-5 by budget-5 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+
+  budget=8  n_ok=120  rho(budget-err, 15dim-ref-err)=+0.169 (p=6.55e-02)  mean_wall_s=1.12
+    top-1 by budget-8 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-3 by budget-8 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-5 by budget-8 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+
+  budget=10  n_ok=120  rho(budget-err, 15dim-ref-err)=+0.633 (p=8.51e-15)  mean_wall_s=1.13
+    top-1 by budget-10 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-3 by budget-10 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+    top-5 by budget-10 ranking: best 15-dim err among them = 247.28, regret = 22.68 mHa
+
+  budget=15  n_ok=120  rho(budget-err, 15dim-ref-err)=+1.000 (p=0.00e+00)  mean_wall_s=1.13
+    top-1 by budget-15 ranking: best 15-dim err among them = 224.60, regret = -0.00 mHa
+    top-3 by budget-15 ranking: best 15-dim err among them = 224.60, regret = -0.00 mHa
+    top-5 by budget-15 ranking: best 15-dim err among them = 224.60, regret = -0.00 mHa
+
+==============================================================================
+Wall time per evaluation, budget vs 15-dim
+==============================================================================
+  budget=5    mean_wall_s=1.107  ratio_to_15dim=0.978
+  budget=8    mean_wall_s=1.124  ratio_to_15dim=0.993
+  budget=10   mean_wall_s=1.126  ratio_to_15dim=0.995
+  budget=15   mean_wall_s=1.131  ratio_to_15dim=1.000
+
+==============================================================================
+Transfer screening: n_dets=8 for physical and rand007 (40 shared triples)
+==============================================================================
+
+==============================================================================
+Transfer screening results
+==============================================================================
+
+  physical: n_ok=40  rho(budget8-err, 15dim-ref-err)=+0.127 (p=4.36e-01)  true_best_15dim=172.15
+    top-1 by budget-8 ranking: best 15-dim err among them = 264.65, regret = 92.50 mHa
+    top-3 by budget-8 ranking: best 15-dim err among them = 264.65, regret = 92.50 mHa
+    top-5 by budget-8 ranking: best 15-dim err among them = 219.75, regret = 47.60 mHa
+
+  rand007: n_ok=40  rho(budget8-err, 15dim-ref-err)=+0.349 (p=2.75e-02)  true_best_15dim=175.54
+    top-1 by budget-8 ranking: best 15-dim err among them = 189.73, regret = 14.18 mHa
+    top-3 by budget-8 ranking: best 15-dim err among them = 189.73, regret = 14.18 mHa
+    top-5 by budget-8 ranking: best 15-dim err among them = 189.73, regret = 14.18 mHa
+
+==============================================================================
+HEADLINE
+==============================================================================
+8x8 screen top-3 regret: identity=22.68 mHa, physical=92.50 mHa, rand007=14.18 mHa
+Does an 8x8 screen recover a top-3-at-15x15 triple? PARTIAL/NO - see per-ordering numbers above
+Works at all three orderings (unlike retained_J_oppspin, which failed at physical)? False
+Cost ratio (wall time per sbd call, 15-dim / 8-dim): 1.01x cheaper at 8x8
+(Sampling cost is shared/amortised across budgets - see module docstring; this ratio is specifically the classical diagonalisation cost, which is what actually scales with budget in a real screen.)

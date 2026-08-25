@@ -25,3 +25,9 @@ outputs/sweep/
 sqd-env/
 Miniforge3-*.sh
 .DS_Store
+
+# never commit keys
+*.pem
+*id_ed25519*
+*.p12
+.ssh/

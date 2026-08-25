@@ -1,0 +1,22 @@
+{
+  "part": "D1_D6_reanalysis",
+  "git_commit": "7ee356ba1a1cc5bfc26c4bba167dafd7cc0465b9",
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "c1_csv_sha256": "476b4eff830918afe7601c716f65fd1466c5fdb10f9d4cf7fb9d819bf90fadd5",
+  "c2_csv_sha256": "a258d5783a32ca16b961279d29e88e0d5e23f1e4b7b3343ab789c7fdbaff7dea",
+  "baseline_csv_sha256": "28af06cfd6c5084e2a1cbfe82cb787fbb332a8afe7af3565c9e41a7dda093f25",
+  "orderings_used": [
+    "identity",
+    "physical",
+    "rand007"
+  ],
+  "physical_reverse_dropped_reason": "bit-identical to physical (verified prior commit)",
+  "d3_t2_magnitude_coincides_with_s1_amp_os": true,
+  "d6_best_rule": "retained_J_oppspin",
+  "d6_worst_case_fractions": {
+    "retained_J_oppspin": 0.6961938329702495,
+    "s1_amp_os": 1.0240156651854757,
+    "s1_ampJ_os": 0.6961938329702495
+  },
+  "generated": "2026-08-25T09:01:36"
+}

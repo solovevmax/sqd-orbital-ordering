@@ -314,8 +314,8 @@ class Amplitudes:
         self.channels_os = sorted(cos, key=lambda c: -c[0])[:K_CHANNELS]
 
 
-def score1(pos, amp, J_aa, J_ab, w_ss):
-    ssp, oss = same_spin_pairs(pos), opp_spin_sites(pos)
+def score1(pos, amp, J_aa, J_ab, w_ss, anchor_orbitals=None):
+    ssp, oss = same_spin_pairs(pos), opp_spin_sites(pos, anchor_orbitals=anchor_orbitals)
     iu = np.triu_indices(amp.norb, k=1)
 
     tot = amp.A_ss[iu].sum()

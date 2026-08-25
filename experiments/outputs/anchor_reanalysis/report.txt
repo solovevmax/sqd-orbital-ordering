@@ -1,0 +1,102 @@
+
+==============================================================================
+D1-D6 -- ANCHOR RE-ANALYSIS (no sampling)
+==============================================================================
+
+==============================================================================
+D1 -- is the MECHANISM ordering-dependent, or only the PROXY?
+==============================================================================
+  identity     rho(captured,err)=-0.927 (p=9.08e-18)   rho(retained_J_oppspin,err)=-0.798 (p=7.18e-10)   range=232.75 mHa
+  physical     rho(captured,err)=-0.933 (p=1.72e-18)   rho(retained_J_oppspin,err)=-0.255 (p=1.12e-01)   range=214.25 mHa
+  rand007      rho(captured,err)=-0.957 (p=4.09e-22)   rho(retained_J_oppspin,err)=-0.608 (p=3.17e-05)   range=197.35 mHa
+
+  captured predicts at all three orderings? True
+  -> MECHANISM HOLDS at all three: capture always predicts err_mHa. retained_J_oppspin's weakness at physical is a PROXY failure (it doesn't track capture well there), not a breakdown of the capture-error mechanism.
+
+==============================================================================
+D2 -- regret accounting per ordering
+==============================================================================
+  identity             (n=40)  random_regret= 98.19  rule_regret= 21.33  frac=0.217  rank=12/40  percentile=65.0%
+  physical             (n=40)  random_regret= 68.60  rule_regret= 47.76  frac=0.696  rank=17/40  percentile=57.5%
+  rand007              (n=40)  random_regret= 84.04  rule_regret= 43.11  frac=0.513  rank=13/40  percentile=67.5%
+  identity (full 120)  (n=120) random_regret=104.48  rule_regret= 22.68  frac=0.217  rank=32/120  percentile=68.3%
+
+  fractional reduction vs random selection: identity (40 shared)=78.3%, physical (40 shared)=30.4%, rand007 (40 shared)=48.7%, identity (full 120)=78.3%
+
+==============================================================================
+D3 -- amplitude-weighted anchor selection
+==============================================================================
+  Due-diligence check (per-orbital, all 10 orbitals): independently-summed raw |t2| participation vs amp.A_os_site: MATCH
+  -> The 't2-magnitude variant' and 's1_amp_os' are the SAME quantity up to normalisation - amp.A_os_site is already defined as the total |t2| amplitude each orbital participates in (see run_ordering_pipeline.py's Amplitudes class). They will show IDENTICAL rho vs err_mHa; not reported as a third independent test.
+
+  ordering      variant               rho          p   regret   frac
+  identity      retained_J_oppspin   -0.798    7.2e-10    21.33  0.217
+  identity      s1_amp_os          -0.391    1.3e-02     0.00  0.000
+  identity      s1_ampJ_os         -0.765    8.8e-09    21.33  0.217
+  physical      retained_J_oppspin   -0.255    1.1e-01    47.76  0.696
+  physical      s1_amp_os          -0.116    4.8e-01     9.28  0.135
+  physical      s1_ampJ_os         -0.322    4.3e-02    47.76  0.696
+  rand007       retained_J_oppspin   -0.608    3.2e-05    43.11  0.513
+  rand007       s1_amp_os          -0.128    4.3e-01    86.05  1.024
+  rand007       s1_ampJ_os         -0.605    3.6e-05    43.11  0.513
+
+  Does amplitude weighting fix physical's breakdown? retained_J_oppspin rho=-0.255, s1_amp_os rho=-0.116, s1_ampJ_os rho=-0.322
+  -> NO: amplitude weighting does NOT fix physical's ordering-dependence.
+
+==============================================================================
+D4 -- structural features of good/bad triples at identity (all 120)
+==============================================================================
+  Index separation == position separation for ALL 120 (expected under identity, since pos[p]=p): True
+
+  feature             rho          p
+  n_occ            -0.032    7.3e-01
+  min_idx_sep      -0.100    2.8e-01
+  max_idx_sep      -0.297    9.7e-04
+
+  10 BEST (lowest err_mHa):
+  triple        err_mHa  n_occ  min_sep  max_sep
+  (0, 1, 2)      224.60      3        1        2
+  (0, 1, 3)      225.95      3        1        3
+  (0, 1, 5)      225.95      2        1        5
+  (0, 1, 4)      225.95      3        1        4
+  (0, 1, 7)      225.95      2        1        7
+  (7, 8, 9)      230.28      0        1        2
+  (1, 7, 9)      230.31      1        2        8
+  (6, 8, 9)      230.87      0        1        3
+  (5, 8, 9)      231.50      0        1        4
+  (0, 2, 3)      233.21      3        1        3
+
+  10 WORST (highest err_mHa):
+  triple        err_mHa  n_occ  min_sep  max_sep
+  (5, 6, 7)      458.70      0        1        2
+  (4, 6, 7)      458.70      1        1        3
+  (3, 4, 7)      458.70      2        1        4
+  (2, 4, 6)      458.70      2        2        4
+  (2, 3, 5)      458.70      2        1        3
+  (2, 3, 6)      458.70      2        1        4
+  (2, 3, 4)      458.70      3        1        2
+  (2, 4, 5)      458.70      2        1        3
+  (3, 5, 6)      458.70      1        1        3
+  (3, 5, 7)      458.70      1        2        4
+
+==============================================================================
+D5 -- bottleneck hypothesis
+==============================================================================
+  orderings sorted by their OWN default-anchor baseline err_mHa (best to worst):
+    rand007      baseline_err=261.60  rho(retained_J_oppspin,err)=-0.608
+    identity     baseline_err=300.32  rho(retained_J_oppspin,err)=-0.798
+    physical     baseline_err=389.71  rho(retained_J_oppspin,err)=-0.255
+
+  strictly monotonic (|rho| decreasing as baseline err worsens)? False
+  worst-baseline ordering has the weakest |rho|? True
+  -> Direction PARTIALLY consistent with the bottleneck hypothesis: the worst same-spin ordering (physical) does have the weakest anchor-predictive power, but the relationship is not monotonic across all three (identity has a stronger rho than rand007 despite a worse baseline). Three points is not a test; this is suggestive, not confirmatory.
+
+==============================================================================
+D6 -- VERDICT
+==============================================================================
+  Candidate PRE-SAMPLING anchor-selection rules (captured excluded - it requires the sampling it would be used to avoid, so it is diagnostic only, not a rule):
+    retained_J_oppspin worst-case fractional regret across 3 orderings = 0.696
+    s1_amp_os          worst-case fractional regret across 3 orderings = 1.024
+    s1_ampJ_os         worst-case fractional regret across 3 orderings = 0.696
+
+  VERDICT: no variant tested beats retained_J_oppspin (worst-case fractional regret 0.696).

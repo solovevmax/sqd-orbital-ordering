@@ -1,0 +1,78 @@
+
+==============================================================================
+LUCJ-ONLY CONTROL -- is the anchor effect an ansatz property?
+==============================================================================
+[setup] H built from cached FCIDUMP (/Users/maxim/sqd-project/cache/h10_R1.6/fcidump.txt), reproduces E_CASCI to: 1.42e-14
+[setup] cached CASCI vector norm^2 = 1.000000000000 (should be 1.0)
+[setup] statevector dim = 63504 (expected C(10,5)^2 = 63504)
+[sanity] all-10-orbitals-anchored (maximal on-site ab coverage - mechanism B's ab pairs are always on-site only, so this is not literally unmasked) at identity: err_lucj=465.7448 mHa, overlap=0.464323, full_capture=1.00000000
+
+==============================================================================
+Identity: all 120 anchor triples, E_lucj/overlap (no sampling)
+==============================================================================
+
+[no-ab control, identity] err_lucj=577.7050 mHa, overlap=0.330507
+
+==============================================================================
+1. rho(err_lucj, err_sqd) at identity
+==============================================================================
+  rho = +0.527  p = 6.08e-10  (n=120)
+
+==============================================================================
+2. rho(overlap, err_sqd) and rho(overlap, captured) at identity
+==============================================================================
+  rho(overlap, err_sqd) = -0.636  p=5.83e-15
+  rho(overlap, captured_sqd) = +0.667  p=9.20e-17
+
+==============================================================================
+3. err_lucj range vs err_sqd range at identity
+==============================================================================
+  err_lucj range: 450.53 - 585.56 (135.03 mHa)
+  err_sqd  range: 224.60 - 458.70 (234.10 mHa, matches prior report)
+  ratio (lucj/sqd) = 0.577
+
+==============================================================================
+4. Does the best-by-LUCJ triple coincide with the best-by-SQD triple?
+==============================================================================
+  best-by-LUCJ triple: (0, 8, 9) (err_lucj=450.53); its rank by SQD error: 39/120
+  best-by-SQD triple:  (0, 1, 2) (err_sqd=224.60); its rank by LUCJ error: 49/120
+  same triple? False
+
+==============================================================================
+5. Repeat at physical and rand007 (40 shared triples)
+==============================================================================
+
+  physical: rho(err_lucj, err_sqd) = -0.160  p=3.25e-01  (n=40)
+  physical: err_lucj range = 95.13 mHa, err_sqd range = 214.25 mHa
+
+  rand007: rho(err_lucj, err_sqd) = +0.107  p=5.09e-01  (n=40)
+  rand007: err_lucj range = 123.66 mHa, err_sqd range = 197.35 mHa
+
+  At physical, does the anchor effect appear in err_lucj at all? err_lucj range = 95.13 mHa, rho(err_lucj,err_sqd) = -0.160 (p=3.25e-01)
+
+==============================================================================
+6. No-alpha-beta control, err_lucj, per ordering
+==============================================================================
+  identity     err_lucj(no-ab) =  577.70 mHa   overlap = 0.3305
+  physical     err_lucj(no-ab) =  568.04 mHa   overlap = 0.2942
+  rand007      err_lucj(no-ab) =  577.96 mHa   overlap = 0.2896
+
+==============================================================================
+HEADLINE
+==============================================================================
+rho(err_lucj, err_sqd) at identity: +0.527 (p=6.08e-10)
+err_lucj range vs err_sqd range at identity: 135.03 mHa vs 234.10 mHa (ratio 0.577)
+best-by-LUCJ triple also best-by-SQD? False (LUCJ-best ranks 39/120 by SQD; SQD-best ranks 49/120 by LUCJ)
+physical-chain failure appears in err_lucj too? rho=-0.160 (p=3.25e-01), range=95.13 mHa
+
+==============================================================================
+INTERPRETATION
+==============================================================================
+  Cross-check against F1 (SQD level): at the ansatz level, 5/120 (4.2%) of identity's anchor triples give a WORSE variational err_lucj than the no-opposite-spin control (577.70 mHa) - the 'anchors can be worse than nothing' finding replicates at the pure ansatz level, at a similar order of magnitude to F1's 4.0% (50 random orderings, SQD level).
+
+  Range ratio (err_lucj/err_sqd) by ordering: identity=0.577, physical=0.444, rand007=0.627
+  rho(err_lucj, err_sqd) by ordering: identity=+0.527 (p=6.08e-10), physical=-0.160 (p=3.25e-01), rand007=+0.107 (p=5.09e-01)
+
+CASE C: BOTH mechanisms contribute, and NOT uniformly. At identity, the anchor effect is visible in the pure ansatz (comparable magnitude, rho=+0.53, and the 'worse than nothing' pattern replicates) - real LUCJ expressivity content. But the rank correlation with SQD error collapses to non-significant at physical (rho=-0.16, p=0.33) and rand007 (rho=+0.11, p=0.51), even though the err_lucj RANGE stays a comparable fraction of err_sqd's range at both (ratios 0.44-0.63, similar to identity's 0.58). Read together: the ansatz-level anchor effect is real and of roughly consistent MAGNITUDE across orderings, but SQD sampling and determinant selection add ordering-dependent noise on top that scrambles the RANKING outside identity - the same instability pattern already seen for retained_J_oppspin and other cheap proxies (E1/F1/D-series). Report the decomposition, not a single label; do not claim the effect is 'purely SQD' or 'purely LUCJ' - it is both, unevenly.
+
+Verdict: CASE C

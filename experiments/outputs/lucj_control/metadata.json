@@ -1,0 +1,22 @@
+{
+  "part": "lucj_control",
+  "git_commit": "cc8d8f7e263ebe9f765ca2908312efe82792ca05",
+  "reference_npz_sha256": "dfb6d4d9b3abe954cebe0fccdc62e9112aabd27b4d88fe33f3e3051b5102502b",
+  "fcidump_sha256": "33323a026f11546c4df6fa332e827554241eab9f479278f47d5c6ecf4eb6008c",
+  "c1_csv_sha256": "476b4eff830918afe7601c716f65fd1466c5fdb10f9d4cf7fb9d819bf90fadd5",
+  "c2_csv_sha256": "a258d5783a32ca16b961279d29e88e0d5e23f1e4b7b3343ab789c7fdbaff7dea",
+  "statevector_dim": 63504,
+  "rho_err_lucj_err_sqd_identity": 0.5273658511714375,
+  "p_identity": 6.076428315648093e-10,
+  "err_lucj_range_identity": 135.03033602499403,
+  "err_sqd_range_identity": 234.10076195010453,
+  "best_lucj_triple": "(0, 8, 9)",
+  "best_sqd_triple": "(0, 1, 2)",
+  "lucj_rank_by_sqd": 39,
+  "sqd_rank_by_lucj": 49,
+  "rho_physical": -0.1598272990914283,
+  "p_physical": 0.32455793317549114,
+  "no_ab_control_err_lucj": "{'identity': 577.704952284022, 'physical': 568.0442121989655, 'rand007': 577.957596159659}",
+  "verdict": "C",
+  "generated": "2026-08-26T08:52:19"
+}

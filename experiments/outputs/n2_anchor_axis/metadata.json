@@ -1,0 +1,67 @@
+{
+  "part": "n2_anchor_axis",
+  "git_commit": "e748f0ed05f52ad9d68f93c9ff05543b293d80f0",
+  "shots": 1000000,
+  "seed": 2026,
+  "rng_seed": 20260826001,
+  "reference_pkl_sha256": "6ce2a7384b577da403bbd2577d95f6e0862cbf80e3cf371b767f2b939ea03012",
+  "fcidump_sha256": "2eeb9926a0ca17cd388c1c45721dd7964543c73ff8264bed6a342ab6e0da8345",
+  "median_ordering": "r039",
+  "median_ordering_perm": "0914723658",
+  "id_range": 89.73267704159582,
+  "rho_oppspin_identity": -0.37505066310651236,
+  "p_oppspin_identity": 2.436576904510174e-05,
+  "rho_lucj_sqd_identity": 0.43194434303308593,
+  "p_lucj_sqd_identity": 8.39045502642643e-07,
+  "rho_lucj_oppspin_identity": -0.9646276966873469,
+  "p_lucj_oppspin_identity": 3.5902269819270166e-70,
+  "lucj_os_replicates_h10": true,
+  "regret_fraction_identity": 0.0,
+  "rho_captured_identity": -0.8767218200063617,
+  "floor_by_chain": {
+    "identity": 113.99971569494483,
+    "reverse": 113.99971569494483,
+    "r039": 49.68586330053881
+  },
+  "n_worse_than_floor": {
+    "identity": [
+      0,
+      120
+    ],
+    "reverse": [
+      0,
+      40
+    ],
+    "r039": [
+      8,
+      40
+    ]
+  },
+  "chain_results": {
+    "reverse": {
+      "rho_oppspin": -0.6873128943344056,
+      "p_oppspin": 9.647847790364887e-07,
+      "rho_captured": -0.883466397855755,
+      "p_captured": 4.4337291090144043e-14,
+      "range": 89.73267704159582
+    },
+    "r039": {
+      "rho_oppspin": -0.2901001322501417,
+      "p_oppspin": 0.06939400652544851,
+      "rho_captured": -0.9324588167851146,
+      "p_captured": 2.166932602622524e-18,
+      "range": 37.643139572111295
+    }
+  },
+  "best_by_chain": {
+    "identity": "(0, 1, 9)",
+    "reverse": "(0, 1, 9)",
+    "r039": "(0, 1, 4)"
+  },
+  "all_agree": false,
+  "n2_headroom": 0.03518797482711078,
+  "h10_headroom": 0.16199999999999992,
+  "n2_range_per_headroom": 2550.094953815323,
+  "h10_range_per_headroom": 1445.0617283950623,
+  "generated": "2026-08-26T10:55:08"
+}

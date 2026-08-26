@@ -1,0 +1,88 @@
+
+==============================================================================
+N2 ANCHOR-AXIS TRANSFER
+==============================================================================
+[setup] N2 CAS(6,10) @ 1.55 A, 6-31g  E_CASCI=-108.8443004310
+[setup] FCIDUMP: /Users/maxim/sqd-project/outputs/unified/reference.fcidump  sha256=2eeb9926a0ca17cd
+
+[N2 baseline] 150 random orderings (r029 excluded as an established outlier -> 149 kept, range 21.65-173.23 mHa, matching the historical 21.65-173.23 mHa figure)
+[N2 baseline] median-nearest ordering: r039  err=49.22  perm=0914723658
+[N2 baseline] mean achieved capture (random, excl r029): 0.9514
+
+[lucj setup] H (from cached FCIDUMP) reproduces E_CASCI to: 1.56e-13
+
+==============================================================================
+Identity: all 120 anchor triples (SQD + LUCJ-only, no extra sbd)
+==============================================================================
+
+==============================================================================
+40 shared triples at reverse and the median-nearest baseline ordering
+==============================================================================
+40 triples drawn (rng seed 20260826001)
+
+==============================================================================
+No-alpha-beta floor at each chain
+==============================================================================
+  identity   floor err_mHa = 114.00
+  reverse    floor err_mHa = 114.00
+  r039       floor err_mHa = 49.69
+
+==============================================================================
+1. err_mHa range over 120 at identity, vs N2 baseline and H10 anchor range
+==============================================================================
+  identity anchor range (120 triples): 24.27 - 114.00 (89.73 mHa)
+  N2 permutation (same-spin ordering) range: 21.65 - 173.23 (151.58 mHa)
+  H10 anchor range (120 triples, identity): 234.10 mHa
+
+==============================================================================
+2. rho(retained_J_oppspin, err_mHa) over 120, and regret
+==============================================================================
+  rho = -0.375  p=2.44e-05
+  random-selection regret = 24.43 mHa;  rule regret = 0.00 mHa;  fraction = 0.000
+
+==============================================================================
+3. rho(captured, err_mHa) over 120
+==============================================================================
+  rho = -0.877  p=2.59e-39
+
+==============================================================================
+ADDITION -- err_lucj at N2 identity (no sampling), vs H10's rho=-0.850
+==============================================================================
+  full_capture (should be 1.0 for all 120): min=1.00000000  max=1.00000000
+  rho(err_lucj, err_sqd) = +0.432  p=8.39e-07
+  rho(err_lucj, retained_J_oppspin) = -0.965  p=3.59e-70
+  err_lucj range: 171.65 - 251.88 (80.23 mHa)
+
+  Does H10's very strong identity-chain relationship (rho(retained_J_oppspin, err_lucj)=-0.850) replicate on N2? YES (N2: -0.965, p=3.59e-70)
+  -> The ansatz-level rule (retained_J_oppspin predicts err_lucj strongly at identity) is GENERAL, not an H10 artefact - it holds on a canonical-orbital system near its capture ceiling too.
+
+==============================================================================
+4. Floor and count worse-than-floor per chain
+==============================================================================
+  identity   floor= 114.00  worse-than-floor=0/120 (0.0%)
+  reverse    floor= 114.00  worse-than-floor=0/40 (0.0%)
+  r039       floor=  49.69  worse-than-floor=8/40 (20.0%)
+
+==============================================================================
+5. Same quantities at reverse and median - is the rule chain-dependent on N2?
+==============================================================================
+  reverse    range=89.73 mHa  rho(oppspin,err)=-0.687 (p=9.65e-07)  rho(captured,err)=-0.883 (p=4.43e-14)
+  r039       range=37.64 mHa  rho(oppspin,err)=-0.290 (p=6.94e-02)  rho(captured,err)=-0.932 (p=2.17e-18)
+
+  rule chain-dependent on N2 (like H10) or consistent? CHAIN-DEPENDENT, same pattern as H10
+
+==============================================================================
+6. Best triple per chain
+==============================================================================
+  identity   best triple = (0, 1, 9)
+  reverse    best triple = (0, 1, 9)
+  r039       best triple = (0, 1, 4)
+  all three agree? False
+
+==============================================================================
+INTERPRETATION -- headroom-normalised comparison
+==============================================================================
+  N2:  ideal capture=0.9866  mean achieved=0.9514  headroom=0.0352  anchor range=89.73 mHa  range/headroom=2550.1 mHa per unit headroom
+  H10: ideal capture=0.7554  mean achieved=0.5934  headroom=0.1620  anchor range=234.10 mHa  range/headroom=1445.1 mHa per unit headroom
+  ratio (N2/H10, per unit headroom): 1.765
+  -> Comparable per unit headroom: the smaller RAW N2 anchor range is explained by N2 being near its capture ceiling, not by the anchor mechanism being weaker on N2. This is a mechanistic result, not a failure of transfer.

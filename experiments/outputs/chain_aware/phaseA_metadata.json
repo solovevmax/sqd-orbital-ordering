@@ -1,0 +1,103 @@
+{
+  "part": "chain_aware_phaseA",
+  "git_commit": "13f39d0bc5fb74e33085d5aeddb84844b5df7b42",
+  "transmission_csv_sha256": "e0946396951a04e0a71fd22082a97780088eecf1e936e01551c05d22ff4f4405",
+  "d_grid": [
+    1,
+    2,
+    3
+  ],
+  "lambda_grid": [
+    0.25,
+    0.5,
+    1.0
+  ],
+  "d_frozen": 3,
+  "lambda_frozen": 0.25,
+  "sweep": [
+    {
+      "d": 3,
+      "lam": 0.25,
+      "mean_abs_rho": 0.8201670986275532
+    },
+    {
+      "d": 2,
+      "lam": 0.25,
+      "mean_abs_rho": 0.8081164968991994
+    },
+    {
+      "d": 3,
+      "lam": 0.5,
+      "mean_abs_rho": 0.8026517600261016
+    },
+    {
+      "d": 2,
+      "lam": 0.5,
+      "mean_abs_rho": 0.8004424054439097
+    },
+    {
+      "d": 2,
+      "lam": 1.0,
+      "mean_abs_rho": 0.7522723969559846
+    },
+    {
+      "d": 3,
+      "lam": 1.0,
+      "mean_abs_rho": 0.7360011228346119
+    },
+    {
+      "d": 1,
+      "lam": 0.25,
+      "mean_abs_rho": 0.7326841788988072
+    },
+    {
+      "d": 1,
+      "lam": 0.5,
+      "mean_abs_rho": 0.7306752493472813
+    },
+    {
+      "d": 1,
+      "lam": 1.0,
+      "mean_abs_rho": 0.7202057297417443
+    }
+  ],
+  "summary": [
+    {
+      "score": "S0",
+      "worst_rho_sqd": -0.279890685849011,
+      "worst_rho_lucj": 0.39746399253522496,
+      "worst_regret": 0.6961938329702501,
+      "mean_rho_sqd": -0.49858250467748827
+    },
+    {
+      "score": "S1",
+      "worst_rho_sqd": -0.25831130041492434,
+      "worst_rho_lucj": 0.6420262664165104,
+      "worst_regret": 0.6961938329702501,
+      "mean_rho_sqd": -0.5084611034400485
+    },
+    {
+      "score": "S2",
+      "worst_rho_sqd": -0.1931941309001461,
+      "worst_rho_lucj": 0.40360259113729996,
+      "worst_regret": 0.6961938329702501,
+      "mean_rho_sqd": -0.47194413982972305
+    },
+    {
+      "score": "S3",
+      "worst_rho_sqd": -0.25831130041492434,
+      "worst_rho_lucj": 0.6420262664165104,
+      "worst_regret": 0.6961938329702501,
+      "mean_rho_sqd": -0.5080077260050583
+    },
+    {
+      "score": "S4",
+      "worst_rho_sqd": -0.20325855770264495,
+      "worst_rho_lucj": 0.5187617260787993,
+      "worst_regret": 0.6961938329702501,
+      "mean_rho_sqd": -0.4828228663188788
+    }
+  ],
+  "phase_b_score": "S0",
+  "generated": "2026-08-26T15:18:51"
+}

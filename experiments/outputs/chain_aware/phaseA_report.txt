@@ -1,0 +1,104 @@
+
+==============================================================================
+CHAIN-AWARE ANCHOR SCORE -- PHASE A (construct and screen, no sampling)
+==============================================================================
+Loaded 400 cross-validated (chain, triple) rows from /Users/maxim/sqd-project/experiments/outputs/transmission/all_evaluations.csv
+  sha256=e0946396951a04e0
+
+==============================================================================
+Hyperparameter sweep: d in {1,2,3} x lambda in {0.25,0.5,1.0}, selection = mean |rho(S,err_lucj)| over {S1,S2,S3,S4} x {H10/identity, N2/identity} ONLY
+==============================================================================
+ d  lam  mean_abs_rho
+ 3 0.25      0.820167
+ 2 0.25      0.808116
+ 3 0.50      0.802652
+ 2 0.50      0.800442
+ 2 1.00      0.752272
+ 3 1.00      0.736001
+ 1 0.25      0.732684
+ 1 0.50      0.730675
+ 1 1.00      0.720206
+
+FROZEN: d=3, lambda=0.25  (mean |rho|=0.8202)
+This (d, lambda) pair is now fixed for every remaining computation in this experiment (Phase A table below, and Phase B if it proceeds). Not revisited.
+
+==============================================================================
+Scoring all 400 rows at frozen d=3, lambda=0.25
+==============================================================================
+
+==============================================================================
+Per-chain, per-score: rho(S, err_lucj), rho(S, err_sqd), normalised selection regret (against err_sqd, argmax(S) vs true best, over the same triple set already evaluated at that chain)
+==============================================================================
+
+S0:
+  H10/identity   n=120   rho(.,err_lucj)=-0.692 (p=2.17e-18)   rho(.,err_sqd)=-0.735 (p=1.24e-21)   regret_frac=0.217
+  H10/physical   n=40    rho(.,err_lucj)=+0.397 (p=1.11e-02)   rho(.,err_sqd)=-0.323 (p=4.21e-02)   regret_frac=0.696
+  H10/rand007    n=40    rho(.,err_lucj)=+0.307 (p=5.41e-02)   rho(.,err_sqd)=-0.590 (p=6.05e-05)   regret_frac=0.513
+  N2/identity   n=120   rho(.,err_lucj)=-0.964 (p=1.54e-69)   rho(.,err_sqd)=-0.376 (p=2.37e-05)   regret_frac=0.000
+  N2/reverse    n=40    rho(.,err_lucj)=-0.963 (p=3.02e-23)   rho(.,err_sqd)=-0.688 (p=9.48e-07)   regret_frac=0.000
+  N2/r039       n=40    rho(.,err_lucj)=-0.981 (p=9.22e-29)   rho(.,err_sqd)=-0.280 (p=8.03e-02)   regret_frac=0.000
+  WORST-CASE rho(.,err_lucj): +0.397 at H10/physical
+  WORST-CASE rho(.,err_sqd):  -0.280 at N2/r039
+  WORST-CASE regret_frac:     0.696 at H10/physical
+
+S1:
+  H10/identity   n=120   rho(.,err_lucj)=-0.698 (p=8.19e-19)   rho(.,err_sqd)=-0.754 (p=2.69e-23)   regret_frac=0.217
+  H10/physical   n=40    rho(.,err_lucj)=+0.642 (p=7.99e-06)   rho(.,err_sqd)=-0.421 (p=6.82e-03)   regret_frac=0.696
+  H10/rand007    n=40    rho(.,err_lucj)=+0.214 (p=1.85e-01)   rho(.,err_sqd)=-0.555 (p=1.99e-04)   regret_frac=0.513
+  N2/identity   n=120   rho(.,err_lucj)=-0.963 (p=2.51e-69)   rho(.,err_sqd)=-0.375 (p=2.39e-05)   regret_frac=0.000
+  N2/reverse    n=40    rho(.,err_lucj)=-0.962 (p=6.42e-23)   rho(.,err_sqd)=-0.686 (p=1.01e-06)   regret_frac=0.000
+  N2/r039       n=40    rho(.,err_lucj)=-0.906 (p=9.93e-16)   rho(.,err_sqd)=-0.258 (p=1.08e-01)   regret_frac=0.000
+  WORST-CASE rho(.,err_lucj): +0.642 at H10/physical
+  WORST-CASE rho(.,err_sqd):  -0.258 at N2/r039
+  WORST-CASE regret_frac:     0.696 at H10/physical
+
+S2:
+  H10/identity   n=120   rho(.,err_lucj)=-0.697 (p=9.77e-19)   rho(.,err_sqd)=-0.725 (p=8.11e-21)   regret_frac=0.217
+  H10/physical   n=40    rho(.,err_lucj)=+0.404 (p=9.81e-03)   rho(.,err_sqd)=-0.309 (p=5.25e-02)   regret_frac=0.696
+  H10/rand007    n=40    rho(.,err_lucj)=+0.330 (p=3.75e-02)   rho(.,err_sqd)=-0.583 (p=8.00e-05)   regret_frac=0.513
+  N2/identity   n=120   rho(.,err_lucj)=-0.959 (p=1.73e-66)   rho(.,err_sqd)=-0.362 (p=4.96e-05)   regret_frac=0.000
+  N2/reverse    n=40    rho(.,err_lucj)=-0.957 (p=5.06e-22)   rho(.,err_sqd)=-0.661 (p=3.49e-06)   regret_frac=0.000
+  N2/r039       n=40    rho(.,err_lucj)=-0.933 (p=1.73e-18)   rho(.,err_sqd)=-0.193 (p=2.32e-01)   regret_frac=0.559
+  WORST-CASE rho(.,err_lucj): +0.404 at H10/physical
+  WORST-CASE rho(.,err_sqd):  -0.193 at N2/r039
+  WORST-CASE regret_frac:     0.696 at H10/physical
+
+S3:
+  H10/identity   n=120   rho(.,err_lucj)=-0.697 (p=9.65e-19)   rho(.,err_sqd)=-0.757 (p=1.47e-23)   regret_frac=0.217
+  H10/physical   n=40    rho(.,err_lucj)=+0.642 (p=7.99e-06)   rho(.,err_sqd)=-0.421 (p=6.82e-03)   regret_frac=0.696
+  H10/rand007    n=40    rho(.,err_lucj)=+0.195 (p=2.27e-01)   rho(.,err_sqd)=-0.555 (p=2.02e-04)   regret_frac=0.513
+  N2/identity   n=120   rho(.,err_lucj)=-0.890 (p=5.76e-42)   rho(.,err_sqd)=-0.382 (p=1.67e-05)   regret_frac=0.000
+  N2/reverse    n=40    rho(.,err_lucj)=-0.931 (p=3.01e-18)   rho(.,err_sqd)=-0.675 (p=1.81e-06)   regret_frac=0.000
+  N2/r039       n=40    rho(.,err_lucj)=-0.906 (p=9.93e-16)   rho(.,err_sqd)=-0.258 (p=1.08e-01)   regret_frac=0.000
+  WORST-CASE rho(.,err_lucj): +0.642 at H10/physical
+  WORST-CASE rho(.,err_sqd):  -0.258 at N2/r039
+  WORST-CASE regret_frac:     0.696 at H10/physical
+
+S4:
+  H10/identity   n=120   rho(.,err_lucj)=-0.702 (p=4.32e-19)   rho(.,err_sqd)=-0.736 (p=1.10e-21)   regret_frac=0.217
+  H10/physical   n=40    rho(.,err_lucj)=+0.519 (p=6.05e-04)   rho(.,err_sqd)=-0.380 (p=1.57e-02)   regret_frac=0.696
+  H10/rand007    n=40    rho(.,err_lucj)=+0.259 (p=1.06e-01)   rho(.,err_sqd)=-0.583 (p=7.85e-05)   regret_frac=0.513
+  N2/identity   n=120   rho(.,err_lucj)=-0.956 (p=1.09e-64)   rho(.,err_sqd)=-0.351 (p=8.33e-05)   regret_frac=0.000
+  N2/reverse    n=40    rho(.,err_lucj)=-0.943 (p=9.49e-20)   rho(.,err_sqd)=-0.644 (p=7.35e-06)   regret_frac=0.000
+  N2/r039       n=40    rho(.,err_lucj)=-0.941 (p=1.67e-19)   rho(.,err_sqd)=-0.203 (p=2.08e-01)   regret_frac=0.000
+  WORST-CASE rho(.,err_lucj): +0.519 at H10/physical
+  WORST-CASE rho(.,err_sqd):  -0.203 at N2/r039
+  WORST-CASE regret_frac:     0.696 at H10/physical
+
+==============================================================================
+DECISIVE COMPARISON -- worst-case rho(err_sqd) and worst-case regret, S0 first
+==============================================================================
+score  worst_rho_sqd  worst_rho_lucj  worst_regret  mean_rho_sqd
+   S0      -0.279891        0.397464      0.696194     -0.498583
+   S1      -0.258311        0.642026      0.696194     -0.508461
+   S2      -0.193194        0.403603      0.696194     -0.471944
+   S3      -0.258311        0.642026      0.696194     -0.508008
+   S4      -0.203259        0.518762      0.696194     -0.482823
+
+S0 worst-case rho(err_sqd) = -0.280
+  S1 worst-case rho(err_sqd) = -0.258  does not beat S0
+  S2 worst-case rho(err_sqd) = -0.193  does not beat S0
+  S3 worst-case rho(err_sqd) = -0.258  does not beat S0
+  S4 worst-case rho(err_sqd) = -0.203  does not beat S0
+
+No chain-aware score (S1-S4) beats S0 on worst-case rho(err_sqd). Per protocol: Phase B proceeds with S0 and reports this as a negative result.

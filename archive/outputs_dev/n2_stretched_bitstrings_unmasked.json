@@ -1,0 +1,71 @@
+{
+  "total_shots": 1000000,
+  "unique_bitstrings": 93,
+  "top_bitstrings": [
+    {
+      "bitstring": "000111000111",
+      "count": 796389,
+      "probability": 0.796389
+    },
+    {
+      "bitstring": "010101010101",
+      "count": 52793,
+      "probability": 0.052793
+    },
+    {
+      "bitstring": "001011001011",
+      "count": 52424,
+      "probability": 0.052424
+    },
+    {
+      "bitstring": "001011010101",
+      "count": 14487,
+      "probability": 0.014487
+    },
+    {
+      "bitstring": "010101001011",
+      "count": 14186,
+      "probability": 0.014186
+    },
+    {
+      "bitstring": "011001011001",
+      "count": 8095,
+      "probability": 0.008095
+    },
+    {
+      "bitstring": "001101010011",
+      "count": 6761,
+      "probability": 0.006761
+    },
+    {
+      "bitstring": "010011001101",
+      "count": 6749,
+      "probability": 0.006749
+    },
+    {
+      "bitstring": "100110100110",
+      "count": 5595,
+      "probability": 0.005595
+    },
+    {
+      "bitstring": "001011100110",
+      "count": 3925,
+      "probability": 0.003925
+    }
+  ],
+  "top1_bitstring": "000111000111",
+  "top1_fraction": 0.796389,
+  "particle_number_check": {
+    "pct_total_correct": 100.0,
+    "pct_alpha_correct": 100.0,
+    "pct_beta_correct": 100.0
+  },
+  "norb": 6,
+  "nelec": [
+    3,
+    3
+  ],
+  "source_qpy_path": "outputs/n2_stretched_lucj_unmasked.qpy",
+  "bitstring_file_path": "outputs/n2_stretched_bitstrings_unmasked.txt",
+  "bit_order_mode": "qiskit"
+}

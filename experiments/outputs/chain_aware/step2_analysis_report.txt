@@ -1,0 +1,98 @@
+
+==============================================================================
+STEP 2 -- CHAIN-AWARE PHASE B ANALYSIS (B3.1-B3.5), 12 held-out H10 chains
+==============================================================================
+Loaded B1 (1440 rows, 12 chains) and B2 (540 OK rows) from cache -- no new sampling.
+
+==============================================================================
+B3.1 -- rho(S0, err_lucj) [ansatz level] and rho(S0, err_sqd) [SQD level] per chain
+==============================================================================
+  newchain00   rho(S0,err_lucj)=-0.049 (p=5.95e-01, n=120)   rho(S0,err_sqd)=-0.451 (p=2.39e-03, n=43)
+  newchain01   rho(S0,err_lucj)=+0.237 (p=9.05e-03, n=120)   rho(S0,err_sqd)=-0.751 (p=6.43e-09, n=43)
+  newchain02   rho(S0,err_lucj)=+0.032 (p=7.30e-01, n=120)   rho(S0,err_sqd)=-0.819 (p=1.99e-11, n=43)
+  newchain03   rho(S0,err_lucj)=+0.251 (p=5.68e-03, n=120)   rho(S0,err_sqd)=-0.383 (p=1.12e-02, n=43)
+  newchain04   rho(S0,err_lucj)=-0.469 (p=6.71e-08, n=120)   rho(S0,err_sqd)=-0.702 (p=1.54e-07, n=43)
+  newchain05   rho(S0,err_lucj)=+0.022 (p=8.08e-01, n=120)   rho(S0,err_sqd)=-0.656 (p=1.81e-06, n=43)
+  newchain06   rho(S0,err_lucj)=+0.037 (p=6.87e-01, n=120)   rho(S0,err_sqd)=-0.759 (p=3.57e-09, n=43)
+  newchain07   rho(S0,err_lucj)=+0.014 (p=8.81e-01, n=120)   rho(S0,err_sqd)=-0.809 (p=5.31e-11, n=43)
+  newchain08   rho(S0,err_lucj)=+0.080 (p=3.87e-01, n=120)   rho(S0,err_sqd)=-0.746 (p=9.61e-09, n=43)
+  newchain09   rho(S0,err_lucj)=-0.152 (p=9.81e-02, n=120)   rho(S0,err_sqd)=-0.688 (p=3.41e-07, n=43)
+  newchain10   rho(S0,err_lucj)=-0.695 (p=1.21e-18, n=120)   rho(S0,err_sqd)=-0.798 (p=1.42e-10, n=43)
+  newchain11   rho(S0,err_lucj)=+0.033 (p=7.17e-01, n=120)   rho(S0,err_sqd)=-0.533 (p=2.36e-04, n=43)
+
+  ansatz-level rho(S0,err_lucj): min=-0.695  max=+0.251  mean=-0.055
+  SQD-level    rho(S0,err_sqd):  min=-0.819  max=-0.383  mean=-0.675
+  WORST CASE ansatz level: +0.251 at newchain03
+  WORST CASE SQD level:    -0.383 at newchain03
+
+  Compare against the previously measured range (-0.850 H10 identity ansatz level, to -0.255 H10 physical SQD level): on these 12 NEW held-out chains, ansatz-level rho ranges -0.695 to +0.251 (crosses zero and goes POSITIVE at 8/12 chains -- worse than the previously seen worst case), and SQD-level rho ranges -0.819 to -0.383 (worst case -0.383 is similar to the previously seen range near -0.255).
+
+==============================================================================
+B3.2 -- normalised selection regret for S0 per chain
+==============================================================================
+  newchain00   regret_frac=0.055
+  newchain01   regret_frac=0.000
+  newchain02   regret_frac=0.460
+  newchain03   regret_frac=0.752
+  newchain04   regret_frac=0.000
+  newchain05   regret_frac=0.485
+  newchain06   regret_frac=0.541
+  newchain07   regret_frac=0.539
+  newchain08   regret_frac=0.473
+  newchain09   regret_frac=0.148
+  newchain10   regret_frac=0.234
+  newchain11   regret_frac=1.152
+
+  median regret_frac: 0.466
+  worst-case regret_frac: 1.152 at newchain11
+
+==============================================================================
+B3.3 -- frozen protocol: five configurations per chain
+==============================================================================
+  top1_S0            median regret_frac=0.466  worst-case regret_frac=1.152
+  top3_S0_best_of    median regret_frac=0.008  worst-case regret_frac=0.417
+  default_anchor     median regret_frac=0.514  worst-case regret_frac=2.041
+  random             median regret_frac=0.671  worst-case regret_frac=1.853
+  no_ab_floor        median regret_frac=2.082  worst-case regret_frac=4.068
+  top1_with_guard    median regret_frac=0.466  worst-case regret_frac=1.152
+
+  guard (top1_S0 worse than the no-ab control) fires in 0/12 chains -- the control wins over the top-ranked anchor pick in 0/12 cases.
+
+==============================================================================
+B3.4 -- link decomposition per chain: rho(err_lucj,captured), rho(captured,err_sqd)
+==============================================================================
+  newchain00   link1=-0.524 (p=3.15e-04) HOLDS   link2=-0.908 (p=4.01e-17) HOLDS
+  newchain01   link1=+0.367 (p=1.55e-02) HOLDS   link2=-0.961 (p=1.96e-24) HOLDS
+  newchain02   link1=-0.362 (p=1.71e-02) HOLDS   link2=-0.941 (p=6.16e-21) HOLDS
+  newchain03   link1=+0.587 (p=3.54e-05) HOLDS   link2=-0.969 (p=1.23e-26) HOLDS
+  newchain04   link1=-0.293 (p=5.69e-02) FAILS   link2=-0.915 (p=8.47e-18) HOLDS
+  newchain05   link1=+0.016 (p=9.20e-01) FAILS   link2=-0.956 (p=1.77e-23) HOLDS
+  newchain06   link1=-0.411 (p=6.18e-03) HOLDS   link2=-0.952 (p=1.22e-22) HOLDS
+  newchain07   link1=-0.370 (p=1.47e-02) HOLDS   link2=-0.958 (p=5.88e-24) HOLDS
+  newchain08   link1=-0.257 (p=9.63e-02) FAILS   link2=-0.989 (p=1.07e-35) HOLDS
+  newchain09   link1=-0.586 (p=3.67e-05) HOLDS   link2=-0.899 (p=2.68e-16) HOLDS
+  newchain10   link1=-0.490 (p=8.59e-04) HOLDS   link2=-0.968 (p=3.99e-26) HOLDS
+  newchain11   link1=-0.512 (p=4.45e-04) HOLDS   link2=-0.953 (p=5.99e-23) HOLDS
+
+  link2 (captured -> err_sqd) holds at 12/12 of these never-before-examined chains (previously: 6/6 chains in the transmission experiment).
+  link1 (err_lucj -> captured) holds at 9/12.
+
+==============================================================================
+B3.5 -- baseline vs best-anchor spread: extending 4.8x compression from n=8 to n=20
+==============================================================================
+  G1-lite (n=8): baseline spread=286.23 mHa, best-of-40 spread=59.84 mHa, compression=4.78x
+
+  Comparability check: was the default-anchor orbital triple among G1-lite's 40 sampled candidates? 2/8 orderings: {'identity': True, 'physical': False, 'rand030': False, 'rand037': True, 'rand007': False, 'rand032': False, 'rand047': False, 'rand029': False}
+  -> For the 6/8 orderings where it was NOT included, best_of_40 never had the chance to reproduce or beat the exact default configuration -- it is a lower bound on the true best-of-121 (120 triples + default), and the 4.8x figure is measuring 'best of a uniform-random 40' against 'default', not 'best of everything' against 'default'. The 12 new chains below use their own 43-triple union (40 random + S0's top-1/top-3), which by construction also excludes the default-anchor triple unless it happens to coincide with one of those 43 -- checked per chain below for the same reason.
+
+  Combined n=20 (8 G1-lite + 12 new): baseline spread=286.23 mHa, best-anchor spread=90.81 mHa, compression=3.15x
+  (G1-lite alone: 4.78x; 12 new chains alone: 2.41x if computed standalone)
+
+==============================================================================
+HEADLINE
+==============================================================================
+1. S0 worst-case rho over 12 held-out chains: ansatz level +0.251 (at newchain03, crosses to positive/wrong-signed), SQD level -0.383 (at newchain03).
+2. Frozen protocol (top1_S0 + no-ab guard): median regret_frac=0.466, worst-case=1.152 -- the guard fired 0/12 times here, so this is identical to plain top1_S0, not an improvement from the guard on this chain set.
+3. Link 2 (captured->err_sqd) holds at 12/12 of these never-before-examined chains.
+4. Compression factor at n=20 (G1-lite n=8 + 12 new): 3.15x (G1-lite alone was 4.78x).
+5. Does S0 generalise out of sample: PARTLY -- link 2 (subspace capture -> answer) generalises cleanly (12/12) and the underlying mechanism is intact, but S0's own correlation with outcome is unreliable and sign-flips at the ansatz level on 8/12 never-seen chains (SQD-level correlation survives everywhere, -0.383 to -0.819); the guard never fired on this chain set so it provided no measured protection here -- the chain-dependence problem is NOT solved by S0.

@@ -1,0 +1,15 @@
+{
+  "part": "chain_aware_phaseB_step2_analysis",
+  "git_commit": "ed3c6e1b4767c452259657a145bef0646fc3a28b",
+  "worst_rho_lucj": 0.25105038052331813,
+  "worst_rho_lucj_chain": "newchain03",
+  "worst_rho_sqd": -0.3832798220200084,
+  "worst_rho_sqd_chain": "newchain03",
+  "regret_median": 0.46634358178273017,
+  "regret_worst": 1.1524966291503487,
+  "guard_fires": 0,
+  "link2_holds": 12,
+  "link1_holds": 9,
+  "compression_n20": 3.152020714787465,
+  "generated": "2026-08-27T08:56:07"
+}

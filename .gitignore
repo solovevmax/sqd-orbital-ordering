@@ -19,7 +19,6 @@ __pycache__/
 Miniforge3-*.sh
 
 # Development artefacts, kept locally only
-archive/
 outputs/ordering/
 outputs/sweep/
 sqd-env/

@@ -1,0 +1,156 @@
+
+==============================================================================
+CHAIN-AWARE ANCHOR SCORE -- PHASE B (out-of-sample validation)
+==============================================================================
+Frozen from Phase A: S_best = S0 (d=3, lambda=0.25)
+Phase A found no chain-aware challenger beat S0 -- this run validates S0 out-of-sample and reports that as the result, per protocol.
+
+==============================================================================
+Drawing 12 new H10 chains (rng seed 20260827001), verified never used before
+==============================================================================
+Known previously-used H10 permutations: 57 (from h10_baseline_R1.6)
+Draws needed to find 12 unique, never-before-used permutations: 12
+  newchain00: 7284035691  (novel: True)
+  newchain01: 2846309751  (novel: True)
+  newchain02: 2386549701  (novel: True)
+  newchain03: 4725903618  (novel: True)
+  newchain04: 8912573460  (novel: True)
+  newchain05: 6570148293  (novel: True)
+  newchain06: 7012684359  (novel: True)
+  newchain07: 8597463201  (novel: True)
+  newchain08: 8724695013  (novel: True)
+  newchain09: 8013956742  (novel: True)
+  newchain10: 1057324689  (novel: True)
+  newchain11: 9315208467  (novel: True)
+VERIFIED: all 12 are novel and mutually distinct.
+
+S0 ranking is chain-invariant (established fact, re-confirmed by construction): top-1 = (0, 1, 9), top-3 = [(0, 1, 9), (0, 8, 9), (0, 1, 8)] -- IDENTICAL at all 12 new chains.
+40 shared triples drawn (rng seed 20260827002)
+Unique triples needing SQD sampling per chain (after dedup): 43
+
+==============================================================================
+B1 -- ansatz-level sweep, no sampling: all 120 triples x 12 chains = 1440 err_lucj evaluations
+==============================================================================
+[1/12] newchain00: err_lucj range 423.55-578.17  rho(S0,err_lucj)=-0.049 (p=5.95e-01)  no-ab err_lucj=535.88  beat-floor=78/120  elapsed=0.3m
+[2/12] newchain01: err_lucj range 544.47-654.92  rho(S0,err_lucj)=+0.237 (p=9.05e-03)  no-ab err_lucj=591.63  beat-floor=71/120  elapsed=0.5m
+[3/12] newchain02: err_lucj range 472.59-655.48  rho(S0,err_lucj)=+0.032 (p=7.30e-01)  no-ab err_lucj=583.66  beat-floor=78/120  elapsed=0.8m
+[4/12] newchain03: err_lucj range 489.02-586.26  rho(S0,err_lucj)=+0.251 (p=5.68e-03)  no-ab err_lucj=526.64  beat-floor=80/120  elapsed=1.1m
+[5/12] newchain04: err_lucj range 449.48-672.77  rho(S0,err_lucj)=-0.469 (p=6.71e-08)  no-ab err_lucj=624.16  beat-floor=104/120  elapsed=1.3m
+[6/12] newchain05: err_lucj range 460.68-684.68  rho(S0,err_lucj)=+0.022 (p=8.08e-01)  no-ab err_lucj=602.70  beat-floor=71/120  elapsed=1.6m
+[7/12] newchain06: err_lucj range 437.17-671.57  rho(S0,err_lucj)=+0.037 (p=6.87e-01)  no-ab err_lucj=578.19  beat-floor=76/120  elapsed=1.9m
+[8/12] newchain07: err_lucj range 434.92-624.07  rho(S0,err_lucj)=+0.014 (p=8.81e-01)  no-ab err_lucj=560.25  beat-floor=79/120  elapsed=2.1m
+[9/12] newchain08: err_lucj range 435.46-556.19  rho(S0,err_lucj)=+0.080 (p=3.87e-01)  no-ab err_lucj=508.40  beat-floor=84/120  elapsed=2.4m
+[10/12] newchain09: err_lucj range 537.57-844.47  rho(S0,err_lucj)=-0.152 (p=9.81e-02)  no-ab err_lucj=742.83  beat-floor=92/120  elapsed=2.6m
+[11/12] newchain10: err_lucj range 525.89-643.80  rho(S0,err_lucj)=-0.695 (p=1.21e-18)  no-ab err_lucj=643.42  beat-floor=118/120  elapsed=2.9m
+[12/12] newchain11: err_lucj range 434.66-622.38  rho(S0,err_lucj)=+0.033 (p=7.17e-01)  no-ab err_lucj=546.49  beat-floor=81/120  elapsed=3.2m
+
+rho(S0, err_lucj) across 12 chains: min=-0.695  max=+0.251  mean=-0.055
+(S_best == S0 here per Phase A's negative result, so this IS the S_best distribution -- no separate S_best column to compare against.)
+
+==============================================================================
+B2 -- SQD sampling: 43 unique triples + default-anchor + floor, x 12 chains, 2000000 shots, seed 2026
+==============================================================================
+Total SQD evaluations: 528 (triples incl. floor) + 12 (default-anchor) = 540
+
+[timing] 540 SQD evaluations in 68.8 minutes (8 workers)
+
+==============================================================================
+B3 -- analysis
+==============================================================================
+
+==============================================================================
+B3a -- rho(S0, err_sqd) per chain, distribution and worst case
+==============================================================================
+  newchain00: n=43  rho(S0,err_sqd)=-0.451 (p=2.39e-03)
+  newchain01: n=43  rho(S0,err_sqd)=-0.751 (p=6.43e-09)
+  newchain02: n=43  rho(S0,err_sqd)=-0.819 (p=1.99e-11)
+  newchain03: n=43  rho(S0,err_sqd)=-0.383 (p=1.12e-02)
+  newchain04: n=43  rho(S0,err_sqd)=-0.702 (p=1.54e-07)
+  newchain05: n=43  rho(S0,err_sqd)=-0.656 (p=1.81e-06)
+  newchain06: n=43  rho(S0,err_sqd)=-0.759 (p=3.57e-09)
+  newchain07: n=43  rho(S0,err_sqd)=-0.809 (p=5.31e-11)
+  newchain08: n=43  rho(S0,err_sqd)=-0.746 (p=9.61e-09)
+  newchain09: n=43  rho(S0,err_sqd)=-0.688 (p=3.41e-07)
+  newchain10: n=43  rho(S0,err_sqd)=-0.798 (p=1.42e-10)
+  newchain11: n=43  rho(S0,err_sqd)=-0.533 (p=2.36e-04)
+
+  distribution: min=-0.819  max=-0.383  mean=-0.675
+  worst-case rho(S0,err_sqd) across 12 new chains: -0.383 at newchain03
+  (compare Phase A's worst case across the original 6 chains: -0.280)
+
+==============================================================================
+B3b -- normalised regret (argmax S0 vs true best, over the union-triple set) per chain
+==============================================================================
+  newchain00: regret_frac=0.055
+  newchain01: regret_frac=0.000
+  newchain02: regret_frac=0.460
+  newchain03: regret_frac=0.752
+  newchain04: regret_frac=0.000
+  newchain05: regret_frac=0.485
+  newchain06: regret_frac=0.541
+  newchain07: regret_frac=0.539
+  newchain08: regret_frac=0.473
+  newchain09: regret_frac=0.148
+  newchain10: regret_frac=0.234
+  newchain11: regret_frac=1.152
+
+  median regret_frac: 0.466
+  worst-case regret_frac: 1.152 at newchain11
+
+==============================================================================
+B3c -- frozen protocol's five configurations: top-1 by S0, top-3 by S0 (best-of-3), default anchors, random, no-ab control
+==============================================================================
+  top1_S0            median regret_frac=0.466  worst-case regret_frac=1.152
+  top3_S0_best_of    median regret_frac=0.008  worst-case regret_frac=0.417
+  default_anchor     median regret_frac=0.514  worst-case regret_frac=2.041
+  random             median regret_frac=0.671  worst-case regret_frac=1.853
+  no_ab_floor        median regret_frac=2.082  worst-case regret_frac=4.068
+  top1_with_guard    median regret_frac=0.466  worst-case regret_frac=1.152
+
+  guard (top1_S0 worse than no-ab floor) fires in 0/12 chains
+
+==============================================================================
+B3d -- link decomposition per chain: rho(err_lucj,captured), rho(captured,err_sqd)
+==============================================================================
+  newchain00: link1=-0.524 (p=3.15e-04) HOLDS   link2=-0.908 (p=4.01e-17) HOLDS
+  newchain01: link1=+0.367 (p=1.55e-02) HOLDS   link2=-0.961 (p=1.96e-24) HOLDS
+  newchain02: link1=-0.362 (p=1.70e-02) HOLDS   link2=-0.941 (p=6.24e-21) HOLDS
+  newchain03: link1=+0.587 (p=3.54e-05) HOLDS   link2=-0.969 (p=1.23e-26) HOLDS
+  newchain04: link1=-0.292 (p=5.79e-02) FAILS   link2=-0.915 (p=8.96e-18) HOLDS
+  newchain05: link1=+0.016 (p=9.20e-01) FAILS   link2=-0.956 (p=1.77e-23) HOLDS
+  newchain06: link1=-0.411 (p=6.18e-03) HOLDS   link2=-0.952 (p=1.22e-22) HOLDS
+  newchain07: link1=-0.369 (p=1.47e-02) HOLDS   link2=-0.958 (p=5.98e-24) HOLDS
+  newchain08: link1=-0.257 (p=9.63e-02) FAILS   link2=-0.989 (p=1.07e-35) HOLDS
+  newchain09: link1=-0.584 (p=3.90e-05) HOLDS   link2=-0.898 (p=3.44e-16) HOLDS
+  newchain10: link1=-0.488 (p=8.92e-04) HOLDS   link2=-0.967 (p=4.27e-26) HOLDS
+  newchain11: link1=-0.512 (p=4.45e-04) HOLDS   link2=-0.953 (p=5.99e-23) HOLDS
+
+  link2 holds at 12/12 of the 12 new chains (previously: 6/6 of the original chains in the transmission experiment)
+
+==============================================================================
+B3e -- baseline vs best-anchor spread across the 12 new chains (compression factor)
+==============================================================================
+     chain  default_err  best_anchor_err  compression
+newchain00   217.879143       172.106463     1.265956
+newchain01   397.420666       176.235370     2.255056
+newchain02   217.052498       170.479200     1.273191
+newchain03   178.734988       178.486426     1.001393
+newchain04   367.278585       261.275158     1.405716
+newchain05   219.850833       189.732657     1.158740
+newchain06   313.316625       173.025614     1.810811
+newchain07   178.593772       175.305056     1.018760
+newchain08   229.908844       172.649848     1.331648
+newchain09   293.839653       208.953745     1.406243
+newchain10   279.990418       223.335814     1.253675
+newchain11   189.307942       171.649670     1.102874
+
+  mean compression factor across 12 new chains: 1.36x (prior result at n=8: 4.8x)
+
+==============================================================================
+HEADLINE
+==============================================================================
+1. Worst-case rho(S_best=S0, err_sqd) at ansatz level: -0.695 (12 new chains); at SQD level: -0.383. Compare Phase A's original worst case: -0.280.
+2. Frozen protocol (top1_S0 + floor guard): median regret_frac=0.466, worst-case=1.152.
+3. Link 2 (captured->err_sqd) holds at 12/12 of the 12 new chains.
+4. Compression factor at n=20 (8 original + 12 new): mean 1.36x on the new 12 alone.
+5. Does a chain-aware score solve the chain-dependence: NO -- Phase A found none of S1-S4 beat S0's worst-case rho, and this out-of-sample run validates S0 itself (not a chain-aware alternative), confirming the chain-dependence is unresolved by this score family.

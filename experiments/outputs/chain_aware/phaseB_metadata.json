@@ -1,0 +1,38 @@
+{
+  "part": "chain_aware_phaseB",
+  "git_commit": "ed3c6e1b4767c452259657a145bef0646fc3a28b",
+  "s_best": "S0",
+  "new_chains": {
+    "newchain00": "7284035691",
+    "newchain01": "2846309751",
+    "newchain02": "2386549701",
+    "newchain03": "4725903618",
+    "newchain04": "8912573460",
+    "newchain05": "6570148293",
+    "newchain06": "7012684359",
+    "newchain07": "8597463201",
+    "newchain08": "8724695013",
+    "newchain09": "8013956742",
+    "newchain10": "1057324689",
+    "newchain11": "9315208467"
+  },
+  "n_draws_to_find_novel": 12,
+  "top1_triple": "(0, 1, 9)",
+  "top3_triples": [
+    "(0, 1, 9)",
+    "(0, 8, 9)",
+    "(0, 1, 8)"
+  ],
+  "rho_s0_lucj_range": [
+    -0.695466370074528,
+    0.25105038052331813
+  ],
+  "rho_s0_sqd_worst": -0.3832798220200084,
+  "regret_median": 0.4663435817827303,
+  "regret_worst": 1.152496629150348,
+  "guard_fires": 0,
+  "link2_holds_count": 12,
+  "link2_total": 12,
+  "compression_mean": 1.3570050335689665,
+  "generated": "2026-08-26T16:36:05"
+}

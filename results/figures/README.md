@@ -113,12 +113,24 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 - Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
   corrected values at generation time (not cached), using the same manual
   paired-bootstrap method as Figure 6.
+- Panel A's two vertical spread brackets use the same corrected best values,
+  so the figure, caption, and stdout all report the same spread (61.65 mHa,
+  4.6x) -- this differs from `g1_report.txt`'s own headline (59.84 mHa,
+  computed from best-of-40 alone, without the default-triple correction).
+- Panels A and B are side by side (60/40 width split, ~2:1 aspect); Figure
+  7's paper variant is 170mm (double-column) rather than the 85mm used by
+  every other figure here, since 85mm is too narrow to hold both panels
+  legibly at that aspect. The left-hand spread bracket's x-position is
+  computed from the actual rendered extent of the ordering-name labels
+  (not a fixed offset), so it can never run through them regardless of
+  label text length.
 
 ## Regenerating
 ```
 python3 experiments/figures.py
 ```
-Outputs `<name>_paper.pdf` / `.png` (85mm width) and `<name>_slide.pdf` /
+Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figure 7 at 170mm --
+see its section above) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
 legible and clipping-free) per figure into this directory. Prints all seven

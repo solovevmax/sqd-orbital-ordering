@@ -10,7 +10,9 @@ call sbd, or recompute any reference. Writes results/figures/.
 Every figure is emitted in two physical sizes (paper: 85mm single-column,
 slide: widescreen) and two formats (vector PDF, 300dpi PNG) -- seven
 figures x two sizes x two formats = 28 image files, plus
-results/figures/README.md.
+results/figures/README.md. Exception: Figure 7's paper variant is 170mm
+(double-column) rather than 85mm -- its two side-by-side panels need that
+width to stay legible at the requested ~2:1 aspect ratio.
 
 Data provenance note: most figures draw only from experiments/outputs/.
 Figures 1 (bottom panel) and 2 (panel A) need the 149-random-ordering N2
@@ -1059,13 +1061,14 @@ def draw_fig7(style):
     d = figure7_data()
     baseline, corrected = d["baseline"], d["corrected"]
 
-    figsize = (PAPER_W, PAPER_W * 2.05) if style == "paper" else (12.5, 6.2)
-    if style == "paper":
-        fig, (axA, axB) = plt.subplots(2, 1, figsize=figsize, layout="constrained",
-                                        height_ratios=[1.35, 1.0])
-    else:
-        fig, (axA, axB) = plt.subplots(1, 2, figsize=figsize, layout="constrained",
-                                        width_ratios=[1.5, 1.0])
+    # side by side at ~60/40 width in both variants, targeting a ~2:1
+    # aspect ratio -- the standard 85mm single-column paper width used by
+    # every other figure here is too narrow to hold two legible panels at
+    # that aspect, so this is the one figure whose paper variant is emitted
+    # at full double-column width (170mm) instead
+    figsize = (170 * MM_TO_IN, 170 * MM_TO_IN / 2) if style == "paper" else (12.5, 6.2)
+    fig, (axA, axB) = plt.subplots(1, 2, figsize=figsize, layout="constrained",
+                                    width_ratios=[1.5, 1.0])
 
     # ---------------- Panel A: slopegraph ----------------
     b_vals_by_name = {o: baseline[o] for o in FIG7_ORDERINGS}
@@ -1098,6 +1101,15 @@ def draw_fig7(style):
         label_y[ordn] = y
         prev = y
 
+    xpad_right = 0.62  # no labels sit on the right side, so a fixed offset is fine there
+
+    # provisional xlim, wide enough that the ordering-name labels (up to
+    # ~9 characters) are never clipped during the measurement draw below --
+    # this doesn't cost any final whitespace since axA is re-limited to the
+    # *measured* extent afterward
+    axA.set_ylim(b_vals.min() - b_span * 0.06, b_vals.max() + b_span * 0.06)
+    axA.set_xlim(-3.5, 1 + xpad_right + 0.75)
+
     for ordn in FIG7_ORDERINGS:
         c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
         ly = label_y[ordn]
@@ -1107,23 +1119,38 @@ def draw_fig7(style):
         axA.text(-0.16, ly, ordn, ha="right", va="center", fontsize=s["tick"], color=c,
                  fontweight="bold" if ordn in FIG7_HIGHLIGHT else "normal")
 
-    xpad = 0.62
-    axA.annotate("", xy=(-xpad, b_vals.max()), xytext=(-xpad, b_vals.min()),
+    # the baseline-spread bracket must sit further left than every ordering
+    # label, or its double-headed arrow runs straight through the label text
+    # (this happened in an earlier version of this figure, since label width
+    # varies with the ordering name and a fixed offset can't account for
+    # that) -- measure the labels' actual rendered extent instead of
+    # guessing a fixed offset
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    label_left_px = min(
+        t.get_window_extent(renderer).x0
+        for t in axA.texts if t.get_text() in FIG7_ORDERINGS
+    )
+    inv = axA.transData.inverted()
+    bracket_x = inv.transform((label_left_px - 10, 0))[0]
+    text_x = inv.transform((label_left_px - 18, 0))[0]
+    left_lim = inv.transform((label_left_px - 38, 0))[0]
+
+    axA.annotate("", xy=(bracket_x, b_vals.max()), xytext=(bracket_x, b_vals.min()),
                  arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"]))
-    axA.text(-xpad - 0.05, (b_vals.max() + b_vals.min()) / 2, f"{b_span:.2f} mHa",
+    axA.text(text_x, (b_vals.max() + b_vals.min()) / 2, f"{b_span:.2f} mHa",
              ha="right", va="center", fontsize=s["tick"], rotation=90)
-    axA.annotate("", xy=(1 + xpad, c_vals.max()), xytext=(1 + xpad, c_vals.min()),
+    axA.annotate("", xy=(1 + xpad_right, c_vals.max()), xytext=(1 + xpad_right, c_vals.min()),
                  arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"]))
     # the compression factor lives right next to the spread it produced,
     # rather than as a separate floating label competing for space with
     # the ordering names on the crowded left side of the plot
-    axA.text(1 + xpad + 0.05, (c_vals.max() + c_vals.min()) / 2,
+    axA.text(1 + xpad_right + 0.05, (c_vals.max() + c_vals.min()) / 2,
              f"{c_span:.2f} mHa\n({compression:.1f}$\\times$ tighter)",
              ha="left", va="center", fontsize=s["tick"], color=OI["vermillion"],
              fontweight="bold")
 
-    axA.set_xlim(-xpad - 0.85, 1 + xpad + 0.75)
-    axA.set_ylim(b_vals.min() - b_span * 0.06, b_vals.max() + b_span * 0.06)
+    axA.set_xlim(left_lim, 1 + xpad_right + 0.75)
     axA.set_xticks([0, 1])
     axA.set_xticklabels(["default", "best\n(40 sampled ∪ default)"])
     axA.set_ylabel("SQD subspace error (mHa)")
@@ -1181,8 +1208,8 @@ def figure7():
         f"{r['compression']:.1f}x reduction, so ordering still matters "
         f"post-optimisation, just far less. rand029 (worst baseline, "
         f"{r['baseline']['rand029']:.2f}->{r['corrected']['rand029']:.2f} mHa) and "
-        f"rand030 (best baseline, {r['baseline']['rand030']:.2f}->"
-        f"{r['corrected']['rand030']:.2f} mHa) are highlighted: rand029 climbs from "
+        f"rand030 (best baseline, {r['baseline']['rand030']:.2f} mHa, unchanged "
+        f"after optimisation) are highlighted: rand029 climbs from "
         f"worst to mid-pack and crosses several other orderings' lines, while "
         f"rand030 -- once its own default anchor is correctly included in its "
         f"candidate pool -- stays the single best ordering both before and after, "
@@ -1192,7 +1219,7 @@ def figure7():
         f"inconclusive, not evidence of no relationship; the CI spans from "
         f"strongly negative to perfectly positive. IMPORTANT DATA NOTE: the "
         f"original best-of-40 values did not include each ordering's own default "
-        f"anchor triple in its 40-sample candidate pool for 7 of 8 orderings "
+        f"anchor triple in its 40-sample candidate pool for 6 of 8 orderings "
         f"(only identity and rand037's own default happened to already be among "
         f"their 40 samples); this is silently harmless unless the default beats "
         f"every sampled alternative, which happens for exactly one ordering here "
@@ -1317,12 +1344,24 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 - Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
   corrected values at generation time (not cached), using the same manual
   paired-bootstrap method as Figure 6.
+- Panel A's two vertical spread brackets use the same corrected best values,
+  so the figure, caption, and stdout all report the same spread (61.65 mHa,
+  4.6x) -- this differs from `g1_report.txt`'s own headline (59.84 mHa,
+  computed from best-of-40 alone, without the default-triple correction).
+- Panels A and B are side by side (60/40 width split, ~2:1 aspect); Figure
+  7's paper variant is 170mm (double-column) rather than the 85mm used by
+  every other figure here, since 85mm is too narrow to hold both panels
+  legibly at that aspect. The left-hand spread bracket's x-position is
+  computed from the actual rendered extent of the ordering-name labels
+  (not a fixed offset), so it can never run through them regardless of
+  label text length.
 
 ## Regenerating
 ```
 python3 experiments/figures.py
 ```
-Outputs `<name>_paper.pdf` / `.png` (85mm width) and `<name>_slide.pdf` /
+Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figure 7 at 170mm --
+see its section above) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
 legible and clipping-free) per figure into this directory. Prints all seven

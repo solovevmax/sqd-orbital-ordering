@@ -19,7 +19,7 @@ not an implementation bug in the evaluator. Given identical determinant
 files, sbd consistently returns energies 12-50 mHa lower than direct
 diagonalisation against the same files, indicating sbd expands the
 subspace internally beyond what is passed to it. This was never resolved
-(see PROGRESS.md, "Ask Shirakawa") and the fast-evaluator approach was
+(see notes/PROGRESS.md, "Ask Shirakawa") and the fast-evaluator approach was
 abandoned rather than debugged further, in favour of the full Aer+sbd
 pipeline used everywhere else in this project. Kept here as the record of
 why that shortcut was ruled out, not merely as dead code.

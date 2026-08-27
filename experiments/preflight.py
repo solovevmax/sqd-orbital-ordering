@@ -493,7 +493,7 @@ def run_shotscan() -> int:
     except (SystemExit, RuntimeError) as exc:
         print(f"R={R_TARGET}: {exc}")
         print(f"Falling back to R={R_FALLBACK} per protocol (CCSD does not converge at R={R_TARGET} - "
-              f"see PROGRESS.md / Step 4d report for the diverging E_corr trace).")
+              f"see notes/PROGRESS.md / Step 4d report for the diverging E_corr trace).")
         ref = R.build_or_load_h10_reference(R_FALLBACK, natoms, basis, cachedir=f"cache/h10_R{R_FALLBACK}")
         R_used = R_FALLBACK
     print(f"Using R={R_used} for the shotscan.")

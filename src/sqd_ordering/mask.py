@@ -13,7 +13,7 @@ History: run_ordering_pipeline.py's original same_spin_pairs() omitted the
 same-spin diagonal (p, p) entries that unified_run.py's fixed mask always
 retained. This module is the fix, extracted so both pipelines share one
 definition and cannot diverge again (see tests/test_mask_equivalence.py and
-PROGRESS.md, "Voided results (25 Aug)").
+notes/PROGRESS.md, "Voided results (25 Aug)").
 """
 from __future__ import annotations
 

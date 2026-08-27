@@ -9,7 +9,7 @@ on the cached N2 CAS(6,10) reference.
 Operator-level, no sampling, no sbd: this is the same test as
 `experiments/preflight.py crosscheck`'s primary check, run over more
 permutations, as a regression guard so the two pipelines can never again
-silently diverge (see PROGRESS.md, "Voided results (25 Aug)", for what
+silently diverge (see notes/PROGRESS.md, "Voided results (25 Aug)", for what
 happened the one time they did).
 
 Run: pytest tests/test_mask_equivalence.py -v

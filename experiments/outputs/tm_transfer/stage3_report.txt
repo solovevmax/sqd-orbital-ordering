@@ -1,0 +1,62 @@
+
+==============================================================================
+STAGE 3 -- TRANSITION-METAL TRANSFER: ANALYSIS
+==============================================================================
+system_used = Cr2_CAS(12,12)_cc-pVDZ   fallback_fired = False
+norb=12  nocc=6  E_CASCI=-2086.5667664880
+budget=55  ideal_ceiling=0.881293  shots=2000000  stability_sd=4.9898 mHa  boundary_ratio=0.9849246231155779
+
+chains: ['identity', 'random', 'reverse']
+
+==============================================================================
+Chain: identity
+==============================================================================
+  err range across 60 triples: 201.95 - 366.69 (164.74 mHa)
+  default-anchor captured=0.7858  headroom=0.0955  range/headroom=1724.5 mHa/unit  (H10=1445.1, N2=2550.1)
+  rho(captured, err_sqd) = -0.971 (p=1.05e-37)  HOLDS  [mechanism, expected to hold]
+  rho(S0, err_lucj) = -0.967 (p=3.81e-36)  (H10=-0.85, N2=-0.965)
+  rho(S0, err_sqd) = -0.915 (p=1.58e-24)  regret_frac=0.000
+  no-alpha-beta floor = 369.61 mHa  worse-than-floor = 0/60 (0.0%)
+  best triple = (0, 1, 11)  err=201.95 mHa
+
+==============================================================================
+Chain: random
+==============================================================================
+  err range across 60 triples: 199.67 - 279.22 (79.55 mHa)
+  default-anchor captured=0.8306  headroom=0.0506  range/headroom=1570.6 mHa/unit  (H10=1445.1, N2=2550.1)
+  rho(captured, err_sqd) = -0.967 (p=5.48e-36)  HOLDS  [mechanism, expected to hold]
+  rho(S0, err_lucj) = -0.961 (p=5.95e-34)  (H10=-0.85, N2=-0.965)
+  rho(S0, err_sqd) = -0.852 (p=6.25e-18)  regret_frac=0.166
+  no-alpha-beta floor = 274.99 mHa  worse-than-floor = 2/60 (3.3%)
+  best triple = (2, 3, 11)  err=199.67 mHa
+
+==============================================================================
+Chain: reverse
+==============================================================================
+  err range across 60 triples: 201.95 - 366.69 (164.74 mHa)
+  default-anchor captured=0.7864  headroom=0.0949  range/headroom=1736.8 mHa/unit  (H10=1445.1, N2=2550.1)
+  rho(captured, err_sqd) = -0.971 (p=1.05e-37)  HOLDS  [mechanism, expected to hold]
+  rho(S0, err_lucj) = -0.967 (p=3.81e-36)  (H10=-0.85, N2=-0.965)
+  rho(S0, err_sqd) = -0.915 (p=1.58e-24)  regret_frac=0.000
+  no-alpha-beta floor = 369.61 mHa  worse-than-floor = 0/60 (0.0%)
+  best triple = (0, 1, 11)  err=201.95 mHa
+
+==============================================================================
+Cross-chain summary
+==============================================================================
+           err_range range_per_headroom rho_captured p_captured rho_s0_lucj p_s0_lucj rho_s0_sqd p_s0_sqd regret_frac       floor n_worse_than_floor n_triples best_triple    best_err
+identity  164.739695        1724.522204    -0.970922        0.0   -0.967023       0.0   -0.91495      0.0         0.0  369.606158                  0        60  (0, 1, 11)  201.953341
+random     79.546263        1570.590558    -0.966601        0.0    -0.96063       0.0  -0.851858      0.0    0.166278   274.98824                  2        60  (2, 3, 11)  199.672824
+reverse   164.739695        1736.779293    -0.970922        0.0   -0.967023       0.0   -0.91495      0.0         0.0  369.606158                  0        60  (0, 1, 11)  201.953341
+
+best triple per chain: {'identity': '(0, 1, 11)', 'random': '(2, 3, 11)', 'reverse': '(0, 1, 11)'}
+same across all chains? False
+
+==============================================================================
+HEADLINE
+==============================================================================
+1. System used: Cr2_CAS(12,12)_cc-pVDZ. Fallback fired: False.
+2. Capture mechanism holds on the transition-metal active space: YES -- rho(captured,err_sqd) ['-0.971', '-0.967', '-0.971'] across chains ['identity', 'random', 'reverse'].
+3. rho(S0, err_lucj) replicates at the -0.85 to -0.97 level: YES -- values ['-0.967', '-0.961', '-0.967'] across chains ['identity', 'random', 'reverse'] (H10=-0.85, N2=-0.965).
+4. Anchor effect in headroom-normalised terms: 1677.3 mHa/unit headroom (mean across chains) vs. H10=1445.1, N2=2550.1.
+5. Best triple moves between chains: YES, differs across chains.

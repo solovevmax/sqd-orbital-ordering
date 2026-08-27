@@ -1,0 +1,64 @@
+{
+  "part": "tm_transfer_stage3",
+  "git_commit": "2a1153f1e2d2aacbd5f07dc2e7d10df34672f0c8",
+  "per_chain": {
+    "identity": {
+      "err_range": 164.7396948910682,
+      "range_per_headroom": 1724.5222044161435,
+      "rho_captured": -0.9709220745876503,
+      "p_captured": 1.0458854699739654e-37,
+      "rho_s0_lucj": -0.967022929212401,
+      "p_s0_lucj": 3.8110109270324586e-36,
+      "rho_s0_sqd": -0.9149504230664055,
+      "p_s0_sqd": 1.5798662435304304e-24,
+      "regret_frac": 0.0,
+      "floor": 369.6061584450945,
+      "n_worse_than_floor": 0,
+      "n_triples": 60,
+      "best_triple": "(0, 1, 11)",
+      "best_err": 201.95334111713237
+    },
+    "random": {
+      "err_range": 79.54626250102595,
+      "range_per_headroom": 1570.5905578104225,
+      "rho_captured": -0.9666009058323374,
+      "p_captured": 5.47868519912473e-36,
+      "rho_s0_lucj": -0.9606303998611277,
+      "p_s0_lucj": 5.947573036223381e-34,
+      "rho_s0_sqd": -0.8518580611975536,
+      "p_s0_sqd": 6.245636587522344e-18,
+      "regret_frac": 0.1662779906129196,
+      "floor": 274.9882396419707,
+      "n_worse_than_floor": 2,
+      "n_triples": 60,
+      "best_triple": "(2, 3, 11)",
+      "best_err": 199.67282364495983
+    },
+    "reverse": {
+      "err_range": 164.7396948910682,
+      "range_per_headroom": 1736.7792925392318,
+      "rho_captured": -0.9709220745876503,
+      "p_captured": 1.0458854699739654e-37,
+      "rho_s0_lucj": -0.967022929212401,
+      "p_s0_lucj": 3.8110109270324586e-36,
+      "rho_s0_sqd": -0.9149504230664055,
+      "p_s0_sqd": 1.5798662435304304e-24,
+      "regret_frac": 0.0,
+      "floor": 369.6061584450945,
+      "n_worse_than_floor": 0,
+      "n_triples": 60,
+      "best_triple": "(0, 1, 11)",
+      "best_err": 201.95334111713237
+    }
+  },
+  "best_triples": {
+    "identity": "(0, 1, 11)",
+    "random": "(2, 3, 11)",
+    "reverse": "(0, 1, 11)"
+  },
+  "all_same_best_triple": false,
+  "mechanism_holds": true,
+  "s0_lucj_replicates": true,
+  "mean_range_per_headroom": 1677.2973515885994,
+  "generated": "2026-08-27T23:09:51"
+}

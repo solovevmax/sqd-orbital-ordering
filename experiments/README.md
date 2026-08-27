@@ -19,6 +19,7 @@ order below; later experiments build on earlier ones' cached data.
 | [n2_anchor_axis](outputs/n2_anchor_axis/README.md) | `n2_anchor_axis.py` | Does the anchor effect transfer to N2? |
 | [transmission](outputs/transmission/README.md) | `transmission.py` | Which link in the chain actually breaks? |
 | [chain_aware (Phase A/B)](outputs/chain_aware/README.md) | `chain_aware.py`, `chain_aware_phaseB.py`, `chain_aware_phaseB_analysis.py` | Can a chain-aware score fix the chain-dependence? |
+| [tm_transfer](outputs/tm_transfer/README.md) | `tm_transfer.py`, `tm_transfer_analysis.py` | Does everything survive a transfer to a localised transition-metal active space (Cr2)? |
 
 `figures.py` generates the publication figure set in `results/figures/`
 from several of the CSVs above; it is not its own experiment.

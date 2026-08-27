@@ -1,0 +1,39 @@
+
+==============================================================================
+STAGE 0 -- reference (loading from cache)
+==============================================================================
+[tm-ref] loading cached reference from /Users/maxim/sqd-project/cache/tm_transfer
+
+==============================================================================
+SYSTEM SUMMARY
+==============================================================================
+  system_used = Cr2_CAS(12,12)_cc-pVDZ
+  fallback_fired = False
+  norb=12  nocc=6  E_CASCI=-2086.5667664880
+[budget] target fraction (H10's 225/63504 = 0.003543) applied to dim=853776: b_float=55.0000 -> b=55  (actual fraction at b=55: 0.003543)
+[budget] ideal capture ceiling at budget=55: 0.881293
+
+==============================================================================
+STAGE 0 -- shot-count stability check (loaded from cache)
+==============================================================================
+  cached result: shots=2000000  sd=4.9898 mHa  boundary_ratio=0.9849246231155779
+
+[chains] identity, reverse, random (rng seed 20260828001) = 11650318107249
+
+==============================================================================
+STAGE 1 -- ansatz level, no sampling: 3 chains x 220 triples
+==============================================================================
+  220 triples per chain
+  stage1 done: 660 rows -> /Users/maxim/sqd-project/experiments/outputs/tm_transfer/stage1_ansatz.csv
+[triples] 60 shared triples drawn (rng seed 20260828002)
+
+==============================================================================
+STAGE 2 -- SQD: 60 shared triples x 3 chains + default + no-ab at each
+==============================================================================
+  total evaluations: 186
+  remaining to compute: 186
+  stage2 done: 186 rows -> /Users/maxim/sqd-project/experiments/outputs/tm_transfer/stage2_sqd.csv
+
+==============================================================================
+STAGE 0/1/2 COMPLETE -- see stage3 script for analysis
+==============================================================================

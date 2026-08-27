@@ -1,0 +1,29 @@
+{
+  "system_used": "Cr2_CAS(12,12)_cc-pVDZ",
+  "fallback_fired": false,
+  "cr2_attempt_trace": {
+    "rhf_converged": true,
+    "E_RHF": -2085.917709420762,
+    "nao": 86,
+    "avas_ncas": 12,
+    "avas_nelecas": 12,
+    "ccsd_converged": true,
+    "ccsd_cycles": 26,
+    "e_corr": -0.6100195216049882,
+    "ccsd_elapsed_s": 0.08955597877502441,
+    "sensible": true
+  },
+  "norb": 12,
+  "nocc": "6",
+  "nelec": [
+    "6",
+    "6"
+  ],
+  "E_CASCI": -2086.566766488001,
+  "dim_full": 853776,
+  "gate1_diff": 6.661338147750939e-16,
+  "gate2_diff": 7.275957614183426e-12,
+  "fcidump_sha256": "dadff8a93758468270167988edbd774fec2f5714529d207933b9bfdbe5590629",
+  "elapsed_min": 0.6,
+  "generated": "2026-08-27T09:39:18"
+}

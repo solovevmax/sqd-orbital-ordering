@@ -1,0 +1,19 @@
+{
+  "system_used": "Cr2_CAS(12,12)_cc-pVDZ",
+  "fallback_fired": false,
+  "norb": 12,
+  "nocc": 6,
+  "E_CASCI": -2086.566766488001,
+  "dim_full": 853776,
+  "budget": 55,
+  "ceiling": 0.8812927373251181,
+  "shots": 2000000,
+  "stability_sd": 4.989789269492354,
+  "boundary_ratio": 0.9849246231155779,
+  "rng_chain_seed": 20260828001,
+  "rng_triple_seed": 20260828002,
+  "random_chain_perm": "11650318107249",
+  "n_stage1": 660,
+  "n_stage2": 186,
+  "generated": "2026-08-27T23:08:59"
+}

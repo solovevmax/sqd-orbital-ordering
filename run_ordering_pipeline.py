@@ -60,6 +60,14 @@ from scipy.stats import spearmanr, pearsonr, kendalltau
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from sqd_ordering import mask
+from sqd_ordering.scores import (
+    Amplitudes, K_CHANNELS, L_SPAN_SS, D_ANCHOR_OS,
+    score1 as _score1_impl, score2 as _score2_impl,
+)
+from sqd_ordering.sampling import (
+    hf_bitstring, top_dets, sample_bitstrings as _sample_bitstrings_impl,
+)
+from sqd_ordering.sbd import parse_sbd_energy, run_sbd as _run_sbd_impl
 
 HARTREE_TO_MHA = 1000.0
 
@@ -105,9 +113,8 @@ CFG = dict(
 )
 
 # --- pre-registered score parameters (fixed before any correlation seen) ---
-K_CHANNELS = 20
-L_SPAN_SS = 5
-D_ANCHOR_OS = 1
+# K_CHANNELS / L_SPAN_SS / D_ANCHOR_OS now live in sqd_ordering.scores (imported above);
+# re-exported under these same names for backward compatibility.
 SENSITIVITY_L = (3, 4, 5, 6, 7)
 GO_RHO, GO_P, GO_REGRET_FRAC = 0.50, 1e-4, 0.50
 
@@ -267,97 +274,17 @@ def perm_to_str(perm):
 
 # ==========================================================================
 # AMPLITUDE-DERIVED SCORES  (non-oracle: RCCSD + mask only)
+# Amplitudes / score1 / score2 now live in sqd_ordering.scores (imported
+# above). Thin wrappers below supply CFG["anchor_mod"] so every existing
+# call site (internal and in experiments/*.py) keeps its exact signature.
 # ==========================================================================
-@dataclass
-class Amplitudes:
-    t1: np.ndarray
-    t2: np.ndarray
-    nocc: int
-    norb: int
-    A_ss: np.ndarray = field(init=False)
-    A_os_site: np.ndarray = field(init=False)
-    channels_ss: list = field(init=False)
-    channels_os: list = field(init=False)
-
-    def __post_init__(self):
-        nocc, norb = self.nocc, self.norb
-        nvir = norb - nocc
-        t2 = np.asarray(self.t2)
-        assert t2.shape == (nocc, nocc, nvir, nvir), t2.shape
-        A_ss = np.zeros((norb, norb))
-        A_os_site = np.zeros(norb)
-        css, cos = [], []
-        for i, j, a, b in itertools.product(range(nocc), range(nocc),
-                                            range(nvir), range(nvir)):
-            ga, gb = nocc + a, nocc + b
-            w_os = abs(float(t2[i, j, a, b]))
-            if w_os > 0:
-                uniq = sorted({i, j, ga, gb})
-                for p in uniq:
-                    A_os_site[p] += w_os
-                cos.append((w_os, tuple(uniq)))
-            if i < j and a < b:
-                w_ss = abs(float(t2[i, j, a, b] - t2[i, j, b, a]))
-                if w_ss > 0:
-                    uniq = sorted({i, j, ga, gb})
-                    for p, q in itertools.combinations(uniq, 2):
-                        A_ss[p, q] += w_ss
-                        A_ss[q, p] += w_ss
-                    css.append((w_ss, tuple(uniq)))
-        for i in range(nocc):
-            for a in range(nvir):
-                w = abs(float(self.t1[i, a]))
-                A_ss[i, nocc + a] += w
-                A_ss[nocc + a, i] += w
-        self.A_ss, self.A_os_site = A_ss, A_os_site
-        self.channels_ss = sorted(css, key=lambda c: -c[0])[:K_CHANNELS]
-        self.channels_os = sorted(cos, key=lambda c: -c[0])[:K_CHANNELS]
-
-
 def score1(pos, amp, J_aa, J_ab, w_ss, anchor_orbitals=None):
-    ssp, oss = same_spin_pairs(pos), opp_spin_sites(pos, anchor_orbitals=anchor_orbitals)
-    iu = np.triu_indices(amp.norb, k=1)
-
-    tot = amp.A_ss[iu].sum()
-    s_ss = (sum(amp.A_ss[p, q] for p, q in ssp) / tot) if tot > 0 else 0.0
-    tot = amp.A_os_site.sum()
-    s_os = (sum(amp.A_os_site[p] for p in oss) / tot) if tot > 0 else 0.0
-
-    M_ss = np.abs(J_aa).sum(axis=0) * amp.A_ss
-    M_os = np.abs(J_ab).sum(axis=0).diagonal() * amp.A_os_site
-    tot2 = M_ss[iu].sum()
-    s_ss2 = (sum(M_ss[p, q] for p, q in ssp) / tot2) if tot2 > 0 else 0.0
-    tot2 = M_os.sum()
-    s_os2 = (sum(M_os[p] for p in oss) / tot2) if tot2 > 0 else 0.0
-
-    return dict(s1_amp=w_ss * s_ss + (1 - w_ss) * s_os,
-                s1_amp_ss=s_ss, s1_amp_os=s_os,
-                s1_ampJ=w_ss * s_ss2 + (1 - w_ss) * s_os2,
-                s1_ampJ_ss=s_ss2, s1_ampJ_os=s_os2)
-
-
-def _span(pos, orbs):
-    ps = [pos[o] for o in orbs]
-    return int(max(ps) - min(ps))
-
-
-def _anchor_dist(pos, orbs):
-    m = CFG["anchor_mod"]
-    return min(min(abs(int(pos[o]) - a) for a in range(0, len(pos), m))
-               for o in orbs)
+    return _score1_impl(pos, amp, J_aa, J_ab, w_ss, anchor_orbitals=anchor_orbitals,
+                        anchor_mod=CFG["anchor_mod"])
 
 
 def score2(pos, amp, w_ss, L=L_SPAN_SS, D=D_ANCHOR_OS):
-    def frac(ch, test):
-        tot = sum(w for w, _ in ch)
-        return (sum(w for w, o in ch if test(o)) / tot) if tot > 0 else 0.0
-    r_ss = frac(amp.channels_ss, lambda o: _span(pos, o) <= L)
-    r_os = frac(amp.channels_os, lambda o: _anchor_dist(pos, o) <= D)
-    tot = sum(w for w, _ in amp.channels_ss) or 1.0
-    soft = sum(w * np.exp(-max(0, _span(pos, o) - 3) / 2.0)
-               for w, o in amp.channels_ss) / tot
-    return dict(s2=w_ss * r_ss + (1 - w_ss) * r_os,
-                s2_ss=r_ss, s2_os=r_os, s2_soft_ss=soft)
+    return _score2_impl(pos, amp, w_ss, L=L, D=D, anchor_mod=CFG["anchor_mod"])
 
 
 def hill_climb(objective, norb, seed=0, restarts=12, max_sweeps=200):
@@ -763,26 +690,11 @@ def stage2(n_perms=200, seed=2026):
 
 # ==========================================================================
 # STAGE 3 -- H10 primary experiment
+# parse_sbd_energy / hf_bitstring / sample_bitstrings / top_dets / run_sbd
+# now live in sqd_ordering.sampling and sqd_ordering.sbd (imported above).
+# sample_bitstrings and run_sbd keep thin wrappers below to supply CFG's
+# values under their exact original signatures.
 # ==========================================================================
-def parse_sbd_energy(text):
-    """Extract the final total energy from sbd stdout.
-
-    ADAPT HERE if your build prints a different final line. Returns None on
-    failure so the caller can dump the tail rather than guess.
-    """
-    pats = [
-        r"diagonalization:\s*Energy\s*=\s*(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)",
-        r"[Ff]inal\s+[Ee]nergy\s*[:=]\s*(-?\d+\.\d+(?:[eE][-+]?\d+)?)",
-            r"[Tt]otal\s+[Ee]nergy\s*[:=]\s*(-?\d+\.\d+(?:[eE][-+]?\d+)?)",
-            r"\bE\s*=\s*(-?\d+\.\d+(?:[eE][-+]?\d+)?)",
-            r"[Ee]nergy\s*[:=]?\s+(-?\d+\.\d+(?:[eE][-+]?\d+)?)"]
-    for p in pats:
-        m = re.findall(p, text)
-        if m:
-            return float(m[-1])
-    return None
-
-
 def build_h10(R, natoms, basis):
     import pyscf.gto, pyscf.scf, pyscf.cc, pyscf.fci
     atom = [["H", (0.0, 0.0, i * R)] for i in range(natoms)]
@@ -823,66 +735,16 @@ def physical_ordering(centroids, n_act_occ):
     return np.asarray(order, dtype=int)     # 'layout': order[k] = orbital at k
 
 
-def hf_bitstring(norb, nocc):
-    return "0" * (norb - nocc) + "1" * nocc      # rightmost bit = orbital 1
-
-
 def sample_bitstrings(op, norb, nelec, shots, seed):
-    """Fresh AerSimulator per call. Returns (alpha_counts, beta_counts)."""
-    import ffsim
-    import ffsim.qiskit as fq
-    from qiskit import QuantumCircuit, QuantumRegister, transpile
-    from qiskit_aer import AerSimulator
-
-    qr = QuantumRegister(2 * norb, "q")
-    qc = QuantumCircuit(qr)
-    qc.append(fq.PrepareHartreeFockJW(norb, nelec), qr)
-    qc.append(fq.UCJOpSpinBalancedJW(op), qr)
-    qc.measure_all()
-
-    sim = AerSimulator(seed_simulator=seed)
-    tkw = dict(seed_transpiler=CFG["seed_transpiler"], optimization_level=1)
-    if CFG["use_pre_init"]:
-        tkw["pre_init"] = fq.PRE_INIT
-    try:
-        tqc = transpile(qc, sim, **tkw)
-    except TypeError:
-        tkw.pop("pre_init", None)
-        tqc = transpile(qc, sim, **tkw)
-    counts = sim.run(tqc, shots=shots).result().get_counts()
-
-    a, b = {}, {}
-    for bits, n in counts.items():
-        bits = bits.replace(" ", "")
-        # validated 'split' transform: alpha = rightmost norb, beta = leftmost
-        a[bits[norb:]] = a.get(bits[norb:], 0) + n
-        b[bits[:norb]] = b.get(bits[:norb], 0) + n
-    return a, b, int(tqc.depth())
-
-
-def top_dets(counts, k, hf):
-    """Top-k by marginal count, HF forced in (sbd needs it present)."""
-    ranked = [s for s, _ in sorted(counts.items(), key=lambda kv: -kv[1])]
-    if hf in ranked:
-        ranked.remove(hf)
-    sel = [hf] + ranked[: k - 1]
-    return sel, len(counts)
+    return _sample_bitstrings_impl(op, norb, nelec, shots, seed,
+                                    seed_transpiler=CFG["seed_transpiler"],
+                                    use_pre_init=CFG["use_pre_init"])
 
 
 def run_sbd(fcidump, adet, bdet, norb):
-    cmd = [CFG["mpirun"], "-n", "1", CFG["sbd_bin"],
-           "--fcidump", fcidump, "--adetfile", adet, "--bdetfile", bdet,
-           "--bit_length", str(max(20, norb))]
-    cmd += CFG["sbd_method_args"] + CFG["sbd_extra"]
-    p = subprocess.run(cmd, capture_output=True, text=True,
-                       timeout=CFG["sbd_timeout"])
-    e = parse_sbd_energy(p.stdout + "\n" + p.stderr)
-    if e is None:
-        print("---- sbd stdout tail ----")
-        print("\n".join((p.stdout + p.stderr).splitlines()[-25:]))
-        sys.exit("FATAL: could not parse an energy from sbd output. "
-                 "Adapt parse_sbd_energy().")
-    return e
+    return _run_sbd_impl(fcidump, adet, bdet, norb, sbd_bin=CFG["sbd_bin"],
+                          mpirun=CFG["mpirun"], method_args=CFG["sbd_method_args"],
+                          extra=CFG["sbd_extra"], timeout=CFG["sbd_timeout"])
 
 
 def git_commit_hash() -> str:

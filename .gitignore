@@ -21,12 +21,13 @@ __pycache__/
 *.qpy
 Miniforge3-*.sh
 
+# Backup files (git history holds every version -- never commit these)
+*.bak
+*.bak[0-9]*
+
 # Development artefacts, kept locally only
 outputs/ordering/
 outputs/sweep/
-sqd-env/
-Miniforge3-*.sh
-.DS_Store
 
 # never commit keys
 *.pem

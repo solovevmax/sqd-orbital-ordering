@@ -1,64 +1,87 @@
 # SQD Orbital Ordering
 
 Python pipeline for constructing LUCJ ansatz circuits, sampling them, and
-exporting inputs for sample-based quantum diagonalisation (SQD).
+exporting inputs for sample-based quantum diagonalisation (SQD). Work
+carried out during a summer internship at RIKEN R-CCS with Prof. Seiji
+Yunoki and Dr Tomonori Shirakawa.
 
-Work carried out during a summer internship at RIKEN R-CCS with
-Prof. Seiji Yunoki and Dr Tomonori Shirakawa.
+The LUCJ ansatz used for SQD sampling is subject to a hardware locality
+mask: on a heavy-hex qubit topology, only same-spin nearest-neighbour
+Jastrow terms and a small set of on-site opposite-spin ("anchor") terms
+survive without expensive SWAP networks. This mask exposes two separable
+levers — which orbitals sit next to each other (same-spin *ordering*) and
+which orbitals anchor the opposite-spin terms (anchor *selection*) — and
+this project asks whether either one measurably changes SQD accuracy, and
+whether that effect can be predicted cheaply enough to be useful. The
+answer is a mechanism, not a rule: subspace capture (how much of the exact
+wavefunction's weight the sampled determinants span) explains SQD error
+almost everywhere tested (rho between -0.88 and -0.98, H10 and N2, every
+same-spin ordering examined), and anchor selection genuinely dominates
+ordering (a 234 mHa range across 120 anchor choices at fixed ordering on
+H10, transferring to N2 with an even stronger ansatz-level correlation).
+But no cheap score — including a purpose-built, pre-declared family of
+five chain-aware candidates tested against a chain-invariant control — has
+been found that reliably turns this into a selection rule: the control's
+own correlation with outcome degrades from -0.850 to -0.255 across
+same-spin chains, and generalises no better on 12 held-out chains tested
+out of sample (worst-case rho even flips sign at the ansatz level). See
+`experiments/README.md` for the full chain of experiments that established
+this, in order.
 
-## Motivation
+## Reproduce the RIKEN benchmark
 
-SQD uses a quantum circuit as a *sampler* to identify the electronic
-configurations that matter most, then diagonalises the molecular Hamiltonian
-classically in the subspace those configurations span.
+The `sbd` library ships its own N2/6-31g benchmark case
+(`sbd/data/n2/README.md`); the 1.0e-4 alpha-bitstring threshold reproduces
+a known reference energy to 12 significant figures. Requires `sbd` built
+(see Install, below) and `SBD_BIN` pointing at the compiled binary.
 
-The LUCJ ansatz used for this sampling is subject to a hardware locality
-constraint: on a heavy-hex qubit topology, only same-spin nearest-neighbour
-Jastrow elements `(p, p+1)` and opposite-spin elements at every fourth orbital
-`(p, p)` for `p % 4 == 0` can be implemented without expensive SWAP networks.
-Everything else is discarded.
+    export SBD_BIN=sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
+    mpirun -n 1 "$SBD_BIN" \
+      --fcidump sbd/data/n2/fcidump.txt \
+      --adetfile sbd/data/n2/1em4-alpha.txt \
+      --bdetfile sbd/data/n2/1em4-alpha.txt \
+      --bit_length 20 \
+      --method 0 --iteration 200 --tolerance 1e-10 \
+      --carryover_type 0 --shuffle 0 --init 0 \
+      --adet_comm_size 1 --bdet_comm_size 1 --task_comm_size 1
 
-Which elements survive that mask depends entirely on how orbitals are mapped to
-qubits — and that mapping is conventionally inherited from the active-space
-construction without a physical criterion. This project builds the
-infrastructure needed to test whether orbital ordering measurably changes
-sampling quality, and how such orderings should be scored.
+Expected output (last lines; ~2-11 minutes depending on machine load):
 
-## Pipeline
+    Energy = -109.0483526946501
+    Sample-based diagonalization: Energy = -109.0483526946501
 
-    Stage 1  PySCF -> FCIDUMP -> CCSD amplitudes -> LUCJ operator -> .qpy circuit
-    Stage 2  .qpy -> Qiskit Aer sampling -> bitstrings with counts
-    Stage 2B bitstrings -> alpha/beta determinant files in sbd format
-    Stage 3  FCIDUMP + determinant files -> sbd (external C++, MPI) -> energy
+This is `sbd` alone, with no dependency on this project's Python code — it
+confirms the external library and the FCIDUMP/determinant-file format
+before debugging anything upstream.
 
-Stage 3 is the `sbd` library by T. Shirakawa
-(https://github.com/r-ccs-cms/sbd) and is not modified by this project.
+## Key results
 
-### Files
+| Result | Figure | Experiment | Data |
+|---|---|---|---|
+| N2 same-spin ordering spread (149 random orderings, R=1.55) | 21.65-173.23 mHa | `unified_run.py` | `outputs/unified/results.csv` |
+| H10 same-spin baseline spread (50 random orderings, default anchor) | 286.23 mHa | [h10_baseline](experiments/outputs/h10_baseline_R1.6/) | `h10_baseline_results.csv` |
+| H10 anchor-selection range (120 triples, fixed identity ordering) | 234.10 mHa | [anchor_decomposition](experiments/outputs/anchor_decomposition_R1.6/) | `c1_all120_identity.csv` |
+| Anchor-optimised compression, same-spin spread / best-anchor spread | 4.8x at n=8, 3.15x at n=20 | [g1_lite](experiments/outputs/g1_lite/), [chain_aware](experiments/outputs/chain_aware/) | `g1_summary.csv`, `step2_b35_new12.csv` |
+| Subspace capture -> SQD error, worst case across every chain tested | rho = -0.88 to -0.98 | [transmission](experiments/outputs/transmission/), [chain_aware](experiments/outputs/chain_aware/) | `all_evaluations.csv`, `phaseB_b3d_links.csv` |
 
-| File | Purpose |
-|---|---|
-| `SQD_workflow.ipynb` | Main driver notebook; all parameters in one `CONFIG` dict |
-| `stage1.py` | Hamiltonian generation, CCSD, LUCJ construction, transpilation, QPY serialisation |
-| `stage2.py` | Aer sampling, particle-number diagnostics, bitstring export |
-| `stage2b.py` | Alpha/beta splitting and sbd determinant-file export |
-| `POC.ipynb` | Proof of concept: orbital permutation invariance and mask sensitivity |
-| `sbd-build-notes/` | macOS build recipe for the external sbd library |
-| `outputs/` | Generated FCIDUMPs, circuits, bitstrings, diagnostics |
+## Repository layout
 
-## Validated interface
+    README.md              this file
+    environment.yml         conda/pip environment
+    run_ordering_pipeline.py  H10 pipeline (mechanism B): mask -> sample -> sbd, stage0-stage3 CLI
+    unified_run.py          N2 pipeline (mechanism A): self-contained, same mask, single consolidated run
+    src/sqd_ordering/       shared library: mask.py, scores.py, sampling.py, sbd.py
+    experiments/            one directory per experiment, each with its own README and CSVs
+    cache/                  cached PySCF/CCSD reference data (FCIDUMP, CI vector), sha256-recorded in each experiment's metadata.json
+    outputs/                generated circuits, bitstrings, and early diagnostic runs (mechanism-A/B validation, H2 smoke tests)
+    results/figures/        publication figure set, generated by experiments/figures.py
+    notes/                  PROGRESS.md, the running lab notebook / decision log
+    tests/                  pytest suite (mechanism A/B mask equivalence)
+    archive/                superseded scripts and pre-project development artefacts, documented in archive/README.md
+    sbd/                    the external sbd library (not modified by this project)
+    sbd-build-notes/        build configuration for sbd on macOS/Apple Silicon
 
-The Python-to-C++ interface has been checked empirically on H2/STO-3G:
-
-| Input | Energy (Ha) | Reference |
-|---|---|---|
-| HF determinant only | `-1.116759307396425` | Hartree-Fock |
-| Full sampled determinant set | `-1.137283834488501` | FCI |
-
-Both match to all printed digits, confirming that the FCIDUMP format and the
-bitstring convention are correct.
-
-### Bitstring convention
+## Bitstring convention
 
 Qiskit writes measurement strings with qubit 0 as the **rightmost** character.
 ffsim maps alpha spin-orbitals to qubits `0..norb-1` and beta to
@@ -70,8 +93,6 @@ reversal**:
 
     alpha = full_bitstring[-norb:]    # rightmost norb characters
     beta  = full_bitstring[:norb]     # leftmost norb characters
-
-Alternative transforms are available via `CONFIG["sbd_bit_transform"]`.
 
 ## Mandatory parameter choices
 
@@ -85,50 +106,49 @@ Verified empirically; changing these breaks the pipeline:
   observed to worsen energies substantially and introduces nondeterminism that
   would confound ordering comparisons.
 
-## Preliminary findings
+## Install
 
-N2 in a CAS(6,6) active space, 6-31g, 10^6 shots, comparing masked (locality
-constrained) against unmasked (full UCJ) ansätze:
-
-| Geometry | Exact top-1 weight | Unmasked top-1 | Masked top-1 |
-|---|---|---|---|
-| 1.098 Å (equilibrium) | 0.9393 | 0.9408 | 0.9940 |
-| 1.55 Å (stretched) | 0.7705 | 0.7964 | 0.9800 |
-| 2.00 Å (very stretched) | 0.3455 | 0.3288 | 0.8746 |
-
-The unmasked ansatz reproduces the exact wavefunction's concentration closely
-at all three geometries. The masked ansatz is systematically over-concentrated,
-and the discrepancy grows with correlation strength — that is, the locality
-mask does most damage precisely where multireference treatment matters most.
-
-Because sbd forms the tensor product of the alpha and beta sectors, sampling
-diversity should be assessed on the **marginals** rather than the joint
-distribution: at equilibrium, 50 unique sampled bitstrings yielded 16 alpha and
-15 beta determinants, giving a 240-dimensional product space, or 60% of the
-full CI space.
-
-## Caveats
-
-- Masked and unmasked energies are those of the CCSD-initialised state, not
-  variationally optimised values.
-- The masked/unmasked comparison is a control experiment establishing that the
-  locality mask matters. It is not itself the orbital-ordering experiment.
-- CCSD diverges at 2.00 Å (energy below CASCI), so energies from that geometry
-  are unreliable; the sampling distributions there are reported for interest
-  only.
-- Ordering comparisons require the product-space dimension to be held fixed
-  across orderings; this control is not yet implemented.
-
-## Environment
-
-    conda create -n sqd -c conda-forge python=3.12 pyscf
+    conda env create -f environment.yml
     conda activate sqd
-    python -m pip install ffsim qiskit qiskit-aer qiskit-addon-sqd matplotlib
 
-For building the external sbd library on macOS, see `sbd-build-notes/`.
+Building `sbd` (not part of this repository's own history — see
+`sbd/README.md` and `sbd/docs/` for the library's own documentation):
 
-Run `pytest tests/` to check that mechanism A (`unified_run.py`) and mechanism
-B (`run_ordering_pipeline.py`) still build entrywise-identical operators.
+- **macOS / Apple Silicon**: copy `sbd-build-notes/Configuration.macos-arm64`
+  to `sbd/apps/chemistry_tpb_selected_basis_diagonalization/Configuration`
+  and run `make` in that directory (conda `mpicxx`, OpenMP, macOS
+  Accelerate for BLAS/LAPACK).
+- **Fugaku (A64FX)**: `sbd/cmake/toolchains/fugaku-llvm.cmake` (Fujitsu MPI
+  `mpiclang++` wrapping `aarch64-linux-gnu-clang++`, LLVM OpenMP, OpenBLAS)
+  — a CMake toolchain file, bundled with `sbd` itself; use it with `sbd`'s
+  own CMake build (`sbd/docs/development-guide.md`).
+
+Either way, set `SBD_BIN` to the resulting binary before running anything
+in this repository:
+
+    export SBD_BIN=/path/to/sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
+
+## Tests
+
+    pytest tests/
+
+Checks that mechanism A (`unified_run.py`) and mechanism B
+(`run_ordering_pipeline.py`) still build entrywise-identical operators from
+the shared `src/sqd_ordering/mask.py`, across 20 random permutations.
+
+## Known issues and corrections
+
+- **H10 results were withdrawn once, 2026-08-25, and re-run.**
+  `run_ordering_pipeline.py`'s original same-spin mask omitted the
+  same-spin diagonal `(p, p)` Jastrow entries that `unified_run.py`'s N2
+  mask always retained — a physically wrong mask, not an alternative one
+  (see `notes/PROGRESS.md`, "Voided results"). Fixed by extracting the
+  mask logic to the single shared `src/sqd_ordering/mask.py`; every H10
+  result in this repository postdates that fix (commit `b84ff9f` onward).
+  N2 was unaffected throughout.
+- Full detail, including why the fix's own validation guard (a Spearman
+  correlation check) did not initially catch the bug, is in
+  `notes/PROGRESS.md`.
 
 ## References
 

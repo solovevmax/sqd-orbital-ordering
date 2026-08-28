@@ -1,0 +1,101 @@
+
+==============================================================================
+TRANSPILATION AUDIT
+==============================================================================
+Heavy-hex CouplingMap(distance=5): 57 qubits, 128 edges
+Backend: GenericBackendV2(num_qubits=57, coupling_map=<above>, seed=42)
+Transpiler policy: generate_preset_pass_manager(optimization_level=1, backend=backend, seed_transpiler=<one of [11, 22, 33, 44, 55]>), pre_init=ffsim.qiskit.PRE_INIT (matches CFG['use_pre_init']=True, the pipeline default). initial_layout NOT pinned -- the pipeline does not pin it either (sample_bitstrings/circuit_stats never pass initial_layout), so this audit matches that policy.
+Circuit construction: sqd_ordering.sampling.build_circuit(op, norb, nelec) -- imported directly, the exact function sample_bitstrings() calls (refactored out of it for this purpose; see commit 'refactor: extract build_circuit()').
+  H10: norb=10  nocc=5
+  N2: norb=10  nocc=3
+  Cr2: norb=12  nocc=6
+
+==============================================================================
+A1 -- anchor axis: all 120 triples at H10 identity
+==============================================================================
+
+==============================================================================
+A2 -- same-spin axis: 20 H10 layouts at default anchors
+==============================================================================
+16 random orderings spanning the baseline range: ['rand030', 'rand034', 'rand002', 'rand038', 'rand033', 'rand019', 'rand044', 'rand012', 'rand009', 'rand013', 'rand049', 'rand015', 'rand043', 'rand008', 'rand027', 'rand029']
+A2 done: 20 layouts x 5 seeds
+
+==============================================================================
+A3 -- key comparisons quoted in the report
+==============================================================================
+  H10_identity_default: done
+  H10_identity_best_012: done
+  H10_identity_S0_top_019: done
+  H10_physical_default: done
+  H10_physical_best_247: done
+  H10_identity_no_ab: done
+  N2_identity_default: done
+  N2_identity_best_019: done
+  Cr2_identity_default: done
+  Cr2_identity_best_01_11: done
+
+==============================================================================
+A3 TABLE -- configuration, SQD error, 2Q gates, depth, SWAPs, parameters (mean +/- sd over 5 seeds)
+==============================================================================
+  H10_identity_default         err=300.32 mHa       2Q=12813.8+/-253.6  depth=7815.2+/-596.2  swaps=676.2+/-78.0  params=1100  pairs_aa=19  pairs_ab=3
+  H10_identity_best_012        err=224.60 mHa       2Q=12747.2+/-546.8  depth=7025.6+/-1136.8  swaps=626.4+/-182.3  params=1100  pairs_aa=19  pairs_ab=3
+  H10_identity_S0_top_019      err=n/a (S0 top pick) 2Q=11789.6+/-538.1  depth=6874.4+/-1883.2  swaps=307.2+/-179.4  params=1100  pairs_aa=19  pairs_ab=3
+  H10_physical_default         err=389.71 mHa       2Q=26516.0+/-175.0  depth=16095.6+/-234.3  swaps=5284.0+/-58.3  params=1100  pairs_aa=19  pairs_ab=3
+  H10_physical_best_247        err=172.15 mHa       2Q=26852.6+/-163.8  depth=16109.4+/-361.1  swaps=5399.8+/-54.4  params=1100  pairs_aa=19  pairs_ab=3
+  H10_identity_no_ab           err=458.70 mHa       2Q=10568.0+/-0.0  depth=4808.0+/-0.0  swaps=0.0+/-0.0  params=950  pairs_aa=19  pairs_ab=0
+  N2_identity_default          err=31.87 mHa        2Q=9492.2+/-404.9  depth=6388.2+/-453.3  swaps=502.6+/-137.6  params=924  pairs_aa=19  pairs_ab=3
+  N2_identity_best_019         err=24.27 mHa        2Q=8611.4+/-28.2  depth=4949.2+/-1474.1  swaps=163.8+/-9.4  params=924  pairs_aa=19  pairs_ab=3
+  Cr2_identity_default         err=240.79 mHa       2Q=24649.0+/-1257.1  depth=13616.4+/-499.1  swaps=1479.0+/-373.0  params=1872  pairs_aa=23  pairs_ab=3
+  Cr2_identity_best_01_11      err=201.95 mHa       2Q=21825.6+/-473.2  depth=8592.8+/-33.4  swaps=403.2+/-157.7  params=1872  pairs_aa=23  pairs_ab=3
+
+==============================================================================
+A4 -- sanity check: no-alpha-beta control must have strictly fewer 2Q gates than any retaining config
+==============================================================================
+  no-alpha-beta control mean 2Q gates: 10568.0
+  minimum mean 2Q gates among all 120 A1 anchor triples (which all retain ab pairs): 11626.4
+  SANITY CHECK: PASS -- no-ab has strictly fewer 2Q gates than every retaining configuration
+
+==============================================================================
+V1 -- is anchor selection resource-neutral? (A1, 120 triples)
+==============================================================================
+  2Q gate count: mean=13298.3  sd=672.52  CV=5.057%  range=[11626,14580]
+  depth:         mean=8138.1  sd=944.25  CV=11.603%  range=[5725,10612]
+  swap count:    mean=824.8  sd=226.15  CV=27.418%  range=[253,1237]
+  V1 VERDICT: NOT resource-neutral -- CV exceeds 1% for at least one metric
+  rho(two_q_gates, S0) = -0.709 (p=1.39e-19)
+  rho(two_q_gates, err_sqd) = +0.608 (p=1.70e-13)  [n=120]
+  rho(depth, S0) = -0.807 (p=9.06e-29)
+  rho(depth, err_sqd) = +0.527 (p=6.39e-10)  [n=120]
+  rho(swap_count, S0) = -0.738 (p=6.49e-22)
+  rho(swap_count, err_sqd) = +0.619 (p=4.70e-14)  [n=120]
+
+==============================================================================
+V2 -- is same-spin ordering resource-neutral? (A2, 20 layouts)
+==============================================================================
+  2Q gate count: mean=21785.3  sd=4140.51  CV=19.006%  range=[12342,26516]
+  depth:         mean=12937.9  sd=2807.55  CV=21.700%  range=[7448,16096]
+  swap count:    mean=3686.1  sd=1382.37  CV=37.502%  range=[507,5284]
+  V2 VERDICT: NOT resource-neutral -- CV exceeds 1% for at least one metric
+
+==============================================================================
+V3 -- do quoted improvements (default vs best anchors) come with a resource increase?
+==============================================================================
+  H10 identity    err 300.32->224.60 (-75.72 mHa)   2Q 12813.8->12747.2 (-66.6)   depth 7815.2->7025.6 (-789.6)   CLEAN
+  H10 physical    err 389.71->172.15 (-217.56 mHa)   2Q 26516.0->26852.6 (+336.6)   depth 16095.6->16109.4 (+13.8)   RESOURCE CHANGE ACCOMPANIES THE IMPROVEMENT
+  N2 identity     err 31.87->24.27 (-7.60 mHa)   2Q 9492.2->8611.4 (-880.8)   depth 6388.2->4949.2 (-1439.0)   CLEAN
+  Cr2 identity    err 240.79->201.95 (-38.84 mHa)   2Q 24649.0->21825.6 (-2823.4)   depth 13616.4->8592.8 (-5023.6)   CLEAN
+
+==============================================================================
+V4 -- SABRE seed variation vs layout variation
+==============================================================================
+  mean within-triple seed-to-seed sd (2Q gates): 484.841
+  layout-to-layout sd (2Q gates, across 120 triples): 672.519
+  ratio layout_sd / seed_sd = 1.39  -> layout variation is ABOVE SABRE seed noise
+
+==============================================================================
+HEADLINE
+==============================================================================
+1. Anchor axis resource-neutral: NO (CV: 2Q=5.057%, depth=11.603%, swap=27.418%)
+2. Same-spin axis resource-neutral: NO (CV: 2Q=19.006%, depth=21.700%, swap=37.502%)
+3. Any quoted improvement comes with extra circuit cost: YES
+4. Layout variation vs SABRE seed noise: ABOVE (ratio=1.39)

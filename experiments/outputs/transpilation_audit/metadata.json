@@ -1,0 +1,33 @@
+{
+  "part": "transpilation_audit",
+  "git_commit": "9995b30228854b38e774af7a05673a701afc97f9",
+  "qiskit_version": "2.5.2",
+  "heavy_hex_distance": 5,
+  "n_qubits": 57,
+  "n_edges": 128,
+  "backend_seed": 42,
+  "optimization_level": 1,
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "v1_resource_neutral": false,
+  "v1_cv": {
+    "two_q": 0.050571959605063214,
+    "depth": 0.11602829993109202,
+    "swap": 0.2741820338472841
+  },
+  "v2_resource_neutral": false,
+  "v2_cv": {
+    "two_q": 0.19005940695887338,
+    "depth": 0.2170010835049833,
+    "swap": 0.3750212600606448
+  },
+  "v3_any_confound": true,
+  "v4_ratio_layout_to_seed": 1.3870916969831013,
+  "a4_sanity_pass": "True",
+  "generated": "2026-08-28T15:31:26"
+}

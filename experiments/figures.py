@@ -8,20 +8,22 @@ reads cached CSVs already produced by prior experiments, does not sample,
 call sbd, or recompute any reference. Writes results/figures/.
 
 Every figure is emitted in two physical sizes (paper: 85mm single-column,
-slide: widescreen) and two formats (vector PDF, 300dpi PNG) -- seven
-figures x two sizes x two formats = 28 image files, plus
-results/figures/README.md. Exception: Figure 7's paper variant is 170mm
-(double-column) rather than 85mm -- its two side-by-side panels need that
-width to stay legible at the requested ~2:1 aspect ratio.
+slide: widescreen) and two formats (vector PDF, 300dpi PNG) -- eleven
+figures x two sizes x two formats = 44 image files, plus
+results/figures/README.md. Exception: Figures 2 and 7a's paper variants are
+170mm (double-column) rather than 85mm -- their side-by-side panels need
+that width to stay legible at their requested wide aspect ratios.
 
 Data provenance note: most figures draw only from experiments/outputs/.
 Figures 1 (bottom panel) and 2 (panel A) need the 149-random-ordering N2
 dataset; the only cached CSV at that exact sample size is
 outputs/stage1/nonoracle_scores.csv (root-level outputs/, not
 experiments/outputs/). It is read as-is -- no recomputation -- and the
-exception is called out explicitly in results/figures/README.md. Figure 7
-reads experiments/outputs/g1_lite/ (see that section of the README for the
-default-anchor correction applied before drawing).
+exception is called out explicitly in results/figures/README.md. Figure 2
+panel C reads experiments/outputs/tm_transfer/ (Cr2 transition-metal transfer
+test) and Figure 7a/7b read experiments/outputs/g1_lite/ and
+experiments/outputs/chain_aware/ (12 held-out H10 chains) -- see their
+README sections for the corrections applied before drawing.
 
 Every render is checked before it is written: check_clipping() draws the
 figure at its final save dpi and flags any Text/Legend artist whose window
@@ -287,6 +289,40 @@ def n2_named_rand():
     return rand, named
 
 
+def n2_outlier_diagnostic():
+    """The N2 random-ordering max/min ratio (8.0x) is driven almost
+    entirely by a single point (r102, 173.23 mHa -- the next-highest point
+    is 122.79 mHa). Printed once at generation time so the annotation
+    choice below (full-range AND p95/p5) is backed by the actual numbers,
+    not asserted."""
+    rand, _ = n2_named_rand()
+    errs = np.array([float(r["err_mHa"]) for r in rand])
+    caps = np.array([float(r["captured"]) for r in rand])
+    names = [r["ordering"] for r in rand]
+    order = np.argsort(-errs)
+
+    mx, mn = errs.max(), errs.min()
+    second_max = np.sort(errs)[-2]
+    p95, p5 = np.percentile(errs, 95), np.percentile(errs, 5)
+    rho_all, p_all = spearmanr(caps, errs)
+    imax = int(np.argmax(errs))
+    mask = np.ones(len(errs), dtype=bool)
+    mask[imax] = False
+    rho_wo, p_wo = spearmanr(caps[mask], errs[mask])
+
+    print(f"\nFigure 1 N2 outlier diagnostic (n={len(errs)} random orderings):")
+    print("  Top 6 by err_mHa:")
+    for i in order[:6]:
+        print(f"    {names[i]}: err={errs[i]:.2f} mHa  captured={caps[i]:.4f}")
+    print(f"  max/min ratio:        {mx / mn:.2f}x")
+    print(f"  second-max/min ratio: {second_max / mn:.2f}x")
+    print(f"  p95/p5 ratio:         {p95 / p5:.2f}x")
+    print(f"  rho(captured, err) with all {len(errs)} points:    {rho_all:+.3f} (p={p_all:.2e})")
+    print(f"  rho(captured, err) without the largest point (n={len(errs) - 1}): {rho_wo:+.3f} (p={p_wo:.2e})")
+    return dict(fold=mx / mn, p95p5=p95 / p5, second_fold=second_max / mn,
+                rho_all=rho_all, rho_wo=rho_wo)
+
+
 # ========================================================================
 # FIGURE 1 -- the effect exists
 # ========================================================================
@@ -352,7 +388,7 @@ def draw_fig1(style):
 
     rng = np.random.default_rng(0)
 
-    def strip(ax, rand_vals, groups, xlabel, title, fold_label):
+    def strip(ax, rand_vals, groups, xlabel, title, fold_label, p95p5=None):
         vmin, vmax = min(rand_vals), max(rand_vals)
         xspan = vmax - vmin
         n_rows = len(groups)
@@ -365,7 +401,13 @@ def draw_fig1(style):
         fold = vmax / vmin
         ax.annotate("", xy=(vmax, bracket_y), xytext=(vmin, bracket_y),
                     arrowprops=dict(arrowstyle="<->", color=RANDOM_COLOR, lw=s["lw"]))
-        ax.text((vmin + vmax) / 2, bracket_y + 0.14, f"{fold:.1f}$\\times$",
+        # the plain max/min ratio is driven almost entirely by a single
+        # outlier point on N2 (see n2_outlier_diagnostic()); p95/p5 is
+        # shown alongside it there, not instead of it -- no point is
+        # removed, both numbers are just made visible together
+        label_txt = (f"{fold:.1f}$\\times$ full range | {p95p5:.1f}$\\times$ p95-p5"
+                     if p95p5 is not None else f"{fold:.1f}$\\times$")
+        ax.text((vmin + vmax) / 2, bracket_y + 0.14, label_txt,
                 ha="center", va="bottom", fontsize=s["font"], color=RANDOM_COLOR,
                 fontweight="bold")
 
@@ -401,20 +443,23 @@ def draw_fig1(style):
         ax.set_title(title, loc="left", fontsize=s["font"])
         return med, fold
 
+    n2_p95p5 = float(np.percentile(n2_rand_vals, 95)) / float(np.percentile(n2_rand_vals, 5))
+
     med_h10, fold_h10 = strip(ax1, h10_rand_vals, h10_groups, "SQD subspace error (mHa)",
                                f"H10, CAS(10,10) -- {len(h10_rand_vals)} random orderings",
                                "H10")
     med_n2, fold_n2 = strip(ax2, n2_rand_vals, n2_groups, "SQD subspace error (mHa)",
                              f"N2, CAS(6,10) -- {len(n2_rand_vals)} random orderings",
-                             "N2")
+                             "N2", p95p5=n2_p95p5)
 
-    return fig, len(h10_rand_vals), len(n2_rand_vals), med_h10, med_n2, fold_h10, fold_n2
+    return fig, len(h10_rand_vals), len(n2_rand_vals), med_h10, med_n2, fold_h10, fold_n2, n2_p95p5
 
 
 def figure1():
+    diag = n2_outlier_diagnostic()
     for style in ("paper", "slide"):
         with plt.rc_context(rc(style)):
-            fig, n_h10, n_n2, med_h10, med_n2, fold_h10, fold_n2 = draw_fig1(style)
+            fig, n_h10, n_n2, med_h10, med_n2, fold_h10, fold_n2, n2_p95p5 = draw_fig1(style)
             emit(fig, "fig1_effect_exists", style)
     caption(
         "Figure 1",
@@ -425,10 +470,15 @@ def figure1():
         f"s2_max and retainedJ_max marked on the strip (reverse and retainedJ_max are "
         f"only 0.11 mHa apart and are shown as one joint marker/label). Bottom: n={n_n2} "
         f"random orderings of N2 CAS(6,10) (random median {med_n2:.1f} mHa; max/min = "
-        f"{fold_n2:.1f}x), with identity, reverse, max_captured (oracle) and "
-        f"retainedJ_max marked (identity and reverse coincide exactly and are shown as "
-        f"one marker). Panels use independent x-scales. Source: "
-        f"score_audit_R1.6/all_scores.csv (H10), outputs/stage1/nonoracle_scores.csv (N2)."
+        f"{fold_n2:.1f}x full range, {n2_p95p5:.1f}x p95/p5), with identity, reverse, "
+        f"max_captured (oracle) and retainedJ_max marked (identity and reverse coincide "
+        f"exactly and are shown as one marker). No point is removed: the full-range "
+        f"factor is shown alongside p95/p5 rather than in place of it, because it is "
+        f"driven almost entirely by a single point (r102, {diag['fold']:.2f}x/min vs. "
+        f"the next-highest point's {diag['second_fold']:.2f}x/min) -- Spearman rho is "
+        f"materially unchanged with ({diag['rho_all']:+.3f}) or without ({diag['rho_wo']:+.3f}) "
+        f"it, so it is a real point, not an artifact. Panels use independent x-scales. "
+        f"Source: score_audit_R1.6/all_scores.csv (H10), outputs/stage1/nonoracle_scores.csv (N2)."
     )
 
 
@@ -436,7 +486,24 @@ def figure1():
 # FIGURE 2 -- the mechanism
 # ========================================================================
 
-CEILING = {"N2": 0.9866, "H10": 0.7554}
+TM_TRANSFER_SQD = REPO / "experiments" / "outputs" / "tm_transfer" / "stage2_sqd.csv"
+
+# N2/H10 ceilings are supplied ansatz-capacity constants, not derived from
+# any cached CSV (see README). Cr2's is different: it IS a value computed
+# by the tm_transfer run itself (ideal_ceiling in stage3_report.txt), read
+# here as the literal number from that report rather than hand-typed.
+CEILING = {"N2": 0.9866, "H10": 0.7554, "Cr2": 0.881293}
+
+
+def cr2_anchor_axis_points():
+    """Pooled (captured, err_mHa) over all three tm_transfer chains
+    (identity, random, reverse) -- 60 anchor triples each, 180 total. The
+    per-chain rho is -0.971/-0.967/-0.971 (stage3_report.txt); pooling is
+    valid here because it's the same relationship being sampled three
+    times, not three different relationships."""
+    rows = read_csv(TM_TRANSFER_SQD)
+    sub = [r for r in rows if r["role"] == "triple"]
+    return [float(r["captured"]) for r in sub], [float(r["err_mHa"]) for r in sub]
 
 
 def scatter_panel(ax, x, y, s, color, box_loc="upper_right", show_n=True):
@@ -482,34 +549,14 @@ def draw_fig2(style):
     h10_cap = [float(r["captured"]) for r in h10_rand]
     h10_err = [float(r["err_mHa"]) for r in h10_rand]
 
-    anchor_rows = read_csv(ANCHOR_REANALYSIS)
-    per_ord = {}
-    for ordn in ("identity", "physical", "rand007"):
-        sub = [r for r in anchor_rows if r["ordering"] == ordn]
-        per_ord[ordn] = ([float(r["captured"]) for r in sub], [float(r["err_mHa"]) for r in sub])
+    cr2_cap, cr2_err = cr2_anchor_axis_points()
 
-    if style == "paper":
-        # A and B stacked full-width (each needs its own y-ticks, title,
-        # rho/p/n box and a ceiling line -- a narrow 1-of-3 gridspec
-        # column has no room for all of that at 85mm). C is a row of 3
-        # narrow shared-y panels below, same as the slide layout.
-        figsize = (PAPER_W, PAPER_W * 2.55)
-        fig = plt.figure(figsize=figsize, layout="constrained")
-        gs = fig.add_gridspec(3, 3, height_ratios=[1.0, 1.0, 1.0], hspace=0.15, wspace=0.15)
-        axA = fig.add_subplot(gs[0, :])
-        axB = fig.add_subplot(gs[1, :])
-        axC1 = fig.add_subplot(gs[2, 0])
-        axC2 = fig.add_subplot(gs[2, 1], sharey=axC1)
-        axC3 = fig.add_subplot(gs[2, 2], sharey=axC1)
-    else:
-        figsize = (12.4, 6.4)
-        fig = plt.figure(figsize=figsize, layout="constrained")
-        gs = fig.add_gridspec(2, 3, height_ratios=[1.3, 1.0], hspace=0.1, wspace=0.55)
-        axA = fig.add_subplot(gs[0, 0:2])
-        axB = fig.add_subplot(gs[0, 2])
-        axC1 = fig.add_subplot(gs[1, 0])
-        axC2 = fig.add_subplot(gs[1, 1], sharey=axC1)
-        axC3 = fig.add_subplot(gs[1, 2], sharey=axC1)
+    # three systems, side by side, each with its own full axes (independent
+    # error scales rule out a shared y-axis) -- 85mm can't hold three fully
+    # labelled panels legibly, so like Figure 7 this is emitted at full
+    # double-column width (170mm) in the paper variant instead
+    figsize = (170 * MM_TO_IN, 170 * MM_TO_IN * 0.46) if style == "paper" else (13.5, 4.6)
+    fig, (axA, axB, axC) = plt.subplots(1, 3, figsize=figsize, layout="constrained")
 
     rhoA, pA = scatter_panel(axA, n2_cap, n2_err, s, OI["blue"], box_loc="upper_left")
     _ceiling_line(axA, CEILING["N2"], s)
@@ -520,25 +567,17 @@ def draw_fig2(style):
     rhoB, pB = scatter_panel(axB, h10_cap, h10_err, s, OI["vermillion"], box_loc="upper_left")
     _ceiling_line(axB, CEILING["H10"], s)
     axB.set_xlabel("captured weight")
-    axB.set_title("B -- H10, CAS(10,10)" if style == "paper" else "B -- H10", loc="left", fontsize=s["font"])
+    axB.set_title("B -- H10, CAS(10,10)", loc="left", fontsize=s["font"])
 
-    rhosC = {}
-    panel_titles = {"identity": "C -- identity", "physical": "physical", "rand007": "rand007"}
-    for ax, ordn in zip((axC1, axC2, axC3), ("identity", "physical", "rand007")):
-        cap, err = per_ord[ordn]
-        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn])
-        rhosC[ordn] = (rho, p, len(cap))
-        ax.set_xlabel("captured weight")
-        ax.set_title(panel_titles[ordn], loc="left", fontsize=s["font"], color=ORDER_COLOR[ordn])
-        _sparse_xticks(ax, 3)
-    axC1.set_ylabel("SQD subspace error (mHa)")
-    plt.setp(axC2.get_yticklabels(), visible=False)
-    plt.setp(axC3.get_yticklabels(), visible=False)
+    rhoC, pC = scatter_panel(axC, cr2_cap, cr2_err, s, OI["green"], box_loc="upper_left")
+    _ceiling_line(axC, CEILING["Cr2"], s)
+    axC.set_xlabel("captured weight")
+    axC.set_title("C -- Cr2, CAS(12,12)", loc="left", fontsize=s["font"])
 
-    for a in (axA, axB, axC1, axC2, axC3):
+    for a in (axA, axB, axC):
         clean(a)
 
-    return fig, (rhoA, pA, len(n2_cap)), (rhoB, pB, len(h10_cap)), rhosC
+    return fig, (rhoA, pA, len(n2_cap)), (rhoB, pB, len(h10_cap)), (rhoC, pC, len(cr2_cap))
 
 
 def figure2():
@@ -548,17 +587,73 @@ def figure2():
             emit(fig, "fig2_mechanism", style)
     caption(
         "Figure 2",
-        f"Captured weight predicts SQD subspace error on both search axes, both "
-        f"systems, with each system's ideal capture ceiling marked (N2: "
-        f"{CEILING['N2']}, H10: {CEILING['H10']}; provided ansatz-capacity values, "
-        f"not fit to these points). A: N2 same-spin ordering axis, n={A[2]}, "
-        f"rho={A[0]:+.3f} (p={A[1]:.1e}). B: H10 same-spin ordering axis, n={B[2]}, "
-        f"rho={B[0]:+.3f} (p={B[1]:.1e}). C: H10 anchor-selection axis at three fixed "
-        f"orderings (n=40 triples each, shared y-axis): identity rho={C['identity'][0]:+.3f} "
-        f"(p={C['identity'][1]:.1e}), physical rho={C['physical'][0]:+.3f} "
-        f"(p={C['physical'][1]:.1e}), rand007 rho={C['rand007'][0]:+.3f} "
-        f"(p={C['rand007'][1]:.1e}). Source: outputs/stage1/nonoracle_scores.csv (A), "
-        f"score_audit_R1.6/all_scores.csv (B), anchor_reanalysis/anchor_reanalysis.csv (C)."
+        f"Captured weight predicts SQD subspace error across three systems, with "
+        f"each system's ideal capture ceiling marked (N2: {CEILING['N2']}, H10: "
+        f"{CEILING['H10']} -- provided ansatz-capacity constants, not fit to these "
+        f"points; Cr2: {CEILING['Cr2']:.4f} -- computed ideal_ceiling from the "
+        f"tm_transfer run itself). A: N2, CAS(6,10), same-spin ordering axis, "
+        f"n={A[2]}, rho={A[0]:+.3f} (p={A[1]:.1e}). B: H10, CAS(10,10), same-spin "
+        f"ordering axis, n={B[2]}, rho={B[0]:+.3f} (p={B[1]:.1e}). C: Cr2, CAS(12,12), "
+        f"anchor-selection axis pooled across all 3 chains (identity, random, "
+        f"reverse; n={C[2]} = 3 x 60 triples), rho={C[0]:+.3f} (p={C[1]:.1e}) -- "
+        f"per-chain rho is -0.971/-0.967/-0.971 (tm_transfer/stage3_report.txt), so "
+        f"pooling does not average over three different relationships, it repeats "
+        f"the same one. The capture mechanism (this figure) replicates on a "
+        f"transition-metal active space, the project's intended application domain. "
+        f"The H10 anchor-selection axis previously shown here (identity/physical/"
+        f"rand007) moves to Figure 2b for backup reference. Source: "
+        f"outputs/stage1/nonoracle_scores.csv (A), score_audit_R1.6/all_scores.csv "
+        f"(B), tm_transfer/stage2_sqd.csv (C)."
+    )
+
+
+def draw_fig2b_anchor_axis(style):
+    s = STYLE[style]
+    anchor_rows = read_csv(ANCHOR_REANALYSIS)
+    per_ord = {}
+    for ordn in ("identity", "physical", "rand007"):
+        sub = [r for r in anchor_rows if r["ordering"] == ordn]
+        per_ord[ordn] = ([float(r["captured"]) for r in sub], [float(r["err_mHa"]) for r in sub])
+
+    figsize = (PAPER_W, PAPER_W * 0.85) if style == "paper" else (11.0, 4.2)
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize, layout="constrained", sharey=True)
+
+    rhos = {}
+    panel_titles = {"identity": "identity", "physical": "physical", "rand007": "rand007"}
+    for ax, ordn in zip((ax1, ax2, ax3), ("identity", "physical", "rand007")):
+        cap, err = per_ord[ordn]
+        rho, p = scatter_panel(ax, cap, err, s, ORDER_COLOR[ordn])
+        rhos[ordn] = (rho, p, len(cap))
+        ax.set_title(panel_titles[ordn], loc="left", fontsize=s["font"], color=ORDER_COLOR[ordn])
+        _sparse_xticks(ax, 3)
+    # one shared x-label on the centre panel rather than three repeats --
+    # at 85mm width, "captured weight" x 3 runs past the right edge
+    ax2.set_xlabel("captured weight")
+    ax1.set_ylabel("SQD subspace error (mHa)")
+    plt.setp(ax2.get_yticklabels(), visible=False)
+    plt.setp(ax3.get_yticklabels(), visible=False)
+
+    for a in (ax1, ax2, ax3):
+        clean(a)
+
+    return fig, rhos
+
+
+def figure2b():
+    for style in ("paper", "slide"):
+        with plt.rc_context(rc(style)):
+            fig, rhos = draw_fig2b_anchor_axis(style)
+            emit(fig, "fig2b_anchor_axis", style)
+    caption(
+        "Figure 2b (backup)",
+        f"H10 anchor-selection axis at three fixed orderings (n=40 triples each, "
+        f"shared y-axis): identity rho={rhos['identity'][0]:+.3f} "
+        f"(p={rhos['identity'][1]:.1e}), physical rho={rhos['physical'][0]:+.3f} "
+        f"(p={rhos['physical'][1]:.1e}), rand007 rho={rhos['rand007'][0]:+.3f} "
+        f"(p={rhos['rand007'][1]:.1e}). Same mechanism as Figure 2, on the anchor-"
+        f"selection search axis instead of the same-spin-ordering axis; moved out "
+        f"of the main sequence to make room for Figure 2's three-system layout. "
+        f"For backup/reference use. Source: anchor_reanalysis/anchor_reanalysis.csv."
     )
 
 
@@ -973,17 +1068,91 @@ def figure6():
     )
 
 
+def draw_fig6b(style):
+    """A single-message slide figure -- nothing beyond the three rows,
+    their bootstrap CIs, and the zero line: retained_J's near-zero combined
+    effect is a sign cancellation of its two opposite-signed components.
+    Fonts are scaled up well beyond the normal STYLE sizes since this must
+    read from the back of a room, not on a printed page."""
+    s = STYLE[style]
+    big = dict(s, font=s["font"] * 1.7, tick=s["tick"] * 1.6,
+               lw=s["lw"] * 1.4, ms=s["ms"] * 1.5, marker_lw=s["marker_lw"] * 1.4)
+    results, n = figure6_data()
+    rows = ["retained_J", "retained_J_samespin", "retained_J_oppspin"]
+
+    figsize = (PAPER_W * 1.7, PAPER_W * 1.15) if style == "paper" else (11.0, 5.5)
+    fig, ax = plt.subplots(figsize=figsize, layout="constrained")
+
+    y = np.arange(len(rows))[::-1]
+    his = []
+    for yy, v in zip(y, rows):
+        rho, p, lo, hi = results[v]
+        his.append(hi)
+        c = OI["orange"] if v != "retained_J" else OI["blue"]
+        ax.plot([lo, hi], [yy, yy], color=c, lw=big["lw"] * 1.5, zorder=1)
+        ax.scatter([rho], [yy], s=big["ms"] * 2.2, c=c, edgecolors="white",
+                   linewidths=big["marker_lw"], zorder=3)
+        ax.annotate(f"{rho:+.3f}", xy=(hi, yy), xytext=(12, 0), textcoords="offset points",
+                    fontsize=big["font"], color=c, va="center", ha="left", fontweight="bold")
+
+    ax.axvline(0, color=OI["black"], lw=big["lw"], zorder=2)
+    ax.set_yticks(y)
+    ax.set_yticklabels([VARIANT_LABEL[v] for v in rows], fontsize=big["tick"])
+    # short label -- at generous font this is a wide word already, and the
+    # fuller "(vs SQD subspace error)" phrasing ran past the canvas edge
+    ax.set_xlabel("Spearman $\\rho$", fontsize=big["font"])
+    ax.tick_params(axis="x", labelsize=big["tick"])
+    ax.set_ylim(y.min() - 0.6, y.max() + 0.6)
+    # explicit right-hand pad for the "+0.212"-style value labels, which
+    # autoscale doesn't account for (it only sees the line/marker data)
+    ax.set_xlim(min(results[v][2] for v in rows) - 0.12, max(his) + 0.55)
+    clean(ax)
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(left=False)
+    return fig, results, n
+
+
+def figure6b():
+    for style in ("paper", "slide"):
+        with plt.rc_context(rc(style)):
+            fig, results, n = draw_fig6b(style)
+            emit(fig, "fig6b_cancellation", style)
+    rj = results["retained_J"]
+    ss = results["retained_J_samespin"]
+    os_ = results["retained_J_oppspin"]
+    caption(
+        "Figure 6b",
+        f"retained_J's near-zero combined effect (rho={rj[0]:+.3f}, n={n} random H10 "
+        f"orderings) is a sign cancellation: its same-spin component is positive "
+        f"(rho={ss[0]:+.3f}) and its opposite-spin component is negative "
+        f"(rho={os_[0]:+.3f}), with bootstrap 95% CIs shown. Single-message slide "
+        f"figure -- Figure 6's 11-row version is unchanged and remains the report "
+        f"figure. Source: score_audit_R1.6/all_scores.csv."
+    )
+
+
 # ========================================================================
 # FIGURE 7 -- lever interaction and spread compression
 # ========================================================================
 
 G1_LITE_DIR = REPO / "experiments" / "outputs" / "g1_lite"
 G1_ALL = G1_LITE_DIR / "g1_all.csv"
+CHAIN_AWARE_B2 = REPO / "experiments" / "outputs" / "chain_aware" / "phaseB_b2_all.csv"
 
 FIG7_ORDERINGS = ["identity", "physical", "rand030", "rand037",
                    "rand007", "rand032", "rand047", "rand029"]
+NEW_CHAINS = [f"newchain{i:02d}" for i in range(12)]
+ALL_FIG7_CHAINS = FIG7_ORDERINGS + NEW_CHAINS
+
 FIG7_HIGHLIGHT = {"rand029": OI["vermillion"], "rand030": OI["blue"]}
 FIG7_OTHER = "#888888"
+
+# chain_aware/step2_analysis_report.txt (B3.5): "Combined n=20 (8 G1-lite +
+# 12 new): ... compression=3.15x". That number is best-of-candidates alone,
+# WITHOUT the default-anchor-triple-inclusion correction applied below (see
+# figure7_n20_data()) -- kept here only as the value to check the corrected
+# recompute against, per the task's explicit instruction to do so.
+REPORTED_COMPRESSION_N20 = 3.15
 
 CHANGE_REPORT = []
 
@@ -1056,80 +1225,161 @@ def figure7_data():
                 default_triple=default_triple, best40_triple=best40_triple)
 
 
-def draw_fig7(style):
-    s = STYLE[style]
-    d = figure7_data()
-    baseline, corrected = d["baseline"], d["corrected"]
+def figure7_new_chains_data():
+    """The 12 held-out chains from chain_aware/phaseB: same
+    default-anchor-triple-inclusion correction as figure7_data() above,
+    applied to phaseB_b2_all.csv's role/is_floor/is_default columns
+    directly rather than re-deriving the default triple from a permutation
+    string (phaseB_b2_all.csv already flags the default-anchor row and the
+    floor-control row explicitly)."""
+    rows = read_csv(CHAIN_AWARE_B2)
+    by_chain = {}
+    for r in rows:
+        by_chain.setdefault(r["chain"], []).append(r)
 
-    # side by side at ~60/40 width in both variants, targeting a ~2:1
-    # aspect ratio -- the standard 85mm single-column paper width used by
-    # every other figure here is too narrow to hold two legible panels at
-    # that aspect, so this is the one figure whose paper variant is emitted
-    # at full double-column width (170mm) instead
-    figsize = (170 * MM_TO_IN, 170 * MM_TO_IN / 2) if style == "paper" else (12.5, 6.2)
-    fig, (axA, axB) = plt.subplots(1, 2, figsize=figsize, layout="constrained",
-                                    width_ratios=[1.5, 1.0])
+    baseline, corrected = {}, {}
+    for chain in NEW_CHAINS:
+        rs = by_chain[chain]
+        default_row = next(r for r in rs if r["role"] == "default_anchor")
+        default_err = float(default_row["err_sqd"])
+        cands = [r for r in rs if r["role"] == "" and r["is_floor"] != "True"]
+        best_cand = min(float(r["err_sqd"]) for r in cands)
+        best_with_default = min(best_cand, default_err)
+        baseline[chain] = default_err
+        corrected[chain] = best_with_default
+        if best_with_default < best_cand - 1e-9:
+            CHANGE_REPORT.append(
+                f"{chain}: default-anchor triple not among its {len(cands)} "
+                f"candidates; best-of-candidates alone gave {best_cand:.2f} mHa, "
+                f"corrected = {best_with_default:.2f} mHa "
+                f"({best_cand - best_with_default:+.2f} mHa)"
+            )
+    return baseline, corrected
 
-    # ---------------- Panel A: slopegraph ----------------
-    b_vals_by_name = {o: baseline[o] for o in FIG7_ORDERINGS}
-    c_vals = np.array([corrected[o] for o in FIG7_ORDERINGS])
-    b_vals = np.array([baseline[o] for o in FIG7_ORDERINGS])
-    b_span = b_vals.max() - b_vals.min()
-    c_span = c_vals.max() - c_vals.min()
+
+_FIG7_N20_CACHE = None
+
+
+def figure7_n20_data():
+    """Combines the 8 G1-lite orderings with the 12 chain_aware held-out
+    chains into one n=20 pool, both under the same default-anchor-triple
+    correction, then checks the resulting compression factor against
+    REPORTED_COMPRESSION_N20 and prints the exact recomputed numbers --
+    per the task's explicit CRITICAL instruction, this figure uses the
+    recomputed value even where it disagrees with the report, and says so.
+    Cached module-wide: draw_fig7a/draw_fig7b each call this once per style
+    (paper, slide), and the diagnostic print below should appear once per
+    run, not once per call."""
+    global _FIG7_N20_CACHE
+    if _FIG7_N20_CACHE is not None:
+        return _FIG7_N20_CACHE
+
+    d8 = figure7_data()
+    baseline12, corrected12 = figure7_new_chains_data()
+    baseline = dict(d8["baseline"])
+    corrected = dict(d8["corrected"])
+    baseline.update(baseline12)
+    corrected.update(corrected12)
+
+    b_vals = np.array([baseline[k] for k in ALL_FIG7_CHAINS])
+    c_vals = np.array([corrected[k] for k in ALL_FIG7_CHAINS])
+    b_span = float(b_vals.max() - b_vals.min())
+    c_span = float(c_vals.max() - c_vals.min())
     compression = b_span / c_span
+    b_argmin = min(baseline, key=baseline.get)
+    b_argmax = max(baseline, key=baseline.get)
+    c_argmin = min(corrected, key=corrected.get)
+    c_argmax = max(corrected, key=corrected.get)
 
-    for ordn in FIG7_ORDERINGS:
-        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
-        lw = s["lw"] * 2.2 if ordn in FIG7_HIGHLIGHT else s["lw"] * 1.1
-        z = 3 if ordn in FIG7_HIGHLIGHT else 2
-        axA.plot([0, 1], [baseline[ordn], corrected[ordn]], color=c, lw=lw,
-                 marker="o", ms=s["ms"] * 0.35, zorder=z)
+    print(f"\nFigure 7a/7b n=20 compression recompute "
+          f"(default anchor triple included in every candidate set):")
+    print(f"  default-anchor spread: {b_span:.2f} mHa "
+          f"(min {b_argmin}={baseline[b_argmin]:.2f}, max {b_argmax}={baseline[b_argmax]:.2f})")
+    print(f"  best-anchor spread:    {c_span:.2f} mHa "
+          f"(min {c_argmin}={corrected[c_argmin]:.2f}, max {c_argmax}={corrected[c_argmax]:.2f})")
+    print(f"  compression: {compression:.3f}x  (report states {REPORTED_COMPRESSION_N20}x)")
+    if abs(compression - REPORTED_COMPRESSION_N20) > 0.03:
+        print(
+            f"  DISCREPANCY: recomputed {compression:.2f}x does not match the "
+            f"report's {REPORTED_COMPRESSION_N20}x (chain_aware/"
+            f"step2_analysis_report.txt, B3.5). That number is best-of-candidates "
+            f"alone, without the default-anchor-triple-inclusion correction this "
+            f"figure is required to apply. Applying the correction can only ever "
+            f"lower or hold a chain's own best value (it's a min() against the "
+            f"uncorrected best), never raise it -- here it lowers rand030's best "
+            f"from 180.81 to 168.67 mHa, which becomes the new pooled minimum and "
+            f"widens the best-anchor spread from {c_span - (180.81 - 168.67):.2f} "
+            f"to {c_span:.2f} mHa. So the corrected compression factor is "
+            f"mathematically bounded to be <= the report's number, and the "
+            f"recomputed {compression:.2f}x is consistent with that direction, "
+            f"not a computation error. This figure uses the recomputed "
+            f"{compression:.2f}x, not the report's {REPORTED_COMPRESSION_N20}x."
+        )
+    else:
+        print("  matches the report.")
 
-    # left-side labels: several baselines sit within a few mHa of a
-    # neighbour (e.g. physical/rand047 6.6 mHa apart) and would overlap
-    # if placed exactly at their own y -- greedily push apart labels
-    # that are closer than min_gap, same idea as Figure 1's staircase,
-    # but nudging locally instead of stacking into fully separate rows
-    order_by_val = sorted(FIG7_ORDERINGS, key=lambda o: b_vals_by_name[o])
-    min_gap = b_span * 0.075
-    label_y = {}
-    prev = None
-    for ordn in order_by_val:
-        y = b_vals_by_name[ordn]
-        if prev is not None and y < prev + min_gap:
-            y = prev + min_gap
-        label_y[ordn] = y
-        prev = y
+    _FIG7_N20_CACHE = dict(baseline=baseline, corrected=corrected, b_span=b_span,
+                           c_span=c_span, compression=compression)
+    return _FIG7_N20_CACHE
 
-    xpad_right = 0.62  # no labels sit on the right side, so a fixed offset is fine there
 
-    # provisional xlim, wide enough that the ordering-name labels (up to
-    # ~9 characters) are never clipped during the measurement draw below --
-    # this doesn't cost any final whitespace since axA is re-limited to the
-    # *measured* extent afterward
+def _count_crossings(baseline, corrected, keys):
+    """How many other chains each chain's line crosses between the default
+    and best columns -- i.e. how many chains it swaps relative rank with."""
+    import itertools
+    counts = {k: 0 for k in keys}
+    for a, b in itertools.combinations(keys, 2):
+        if (baseline[a] < baseline[b]) != (corrected[a] < corrected[b]):
+            counts[a] += 1
+            counts[b] += 1
+    return counts
+
+
+def draw_fig7a(style):
+    s = STYLE[style]
+    d = figure7_n20_data()
+    baseline, corrected = d["baseline"], d["corrected"]
+    b_span, c_span, compression = d["b_span"], d["c_span"], d["compression"]
+
+    # ~2:1 aspect ratio, wide enough to hold the 20-line fan-to-band -- the
+    # standard 85mm single-column paper width is too narrow for that at a
+    # 2:1 aspect, so (as with the old combined Figure 7) the paper variant
+    # is emitted at full double-column width (170mm) instead
+    figsize = (170 * MM_TO_IN, 170 * MM_TO_IN / 2) if style == "paper" else (12.5, 6.2)
+    fig, axA = plt.subplots(figsize=figsize, layout="constrained")
+
+    b_vals = np.array([baseline[k] for k in ALL_FIG7_CHAINS])
+    c_vals = np.array([corrected[k] for k in ALL_FIG7_CHAINS])
+
+    for k in ALL_FIG7_CHAINS:
+        hl = k in FIG7_HIGHLIGHT
+        c = FIG7_HIGHLIGHT.get(k, FIG7_OTHER)
+        axA.plot([0, 1], [baseline[k], corrected[k]], color=c,
+                 lw=s["lw"] * (2.2 if hl else 0.9), alpha=(1.0 if hl else 0.55),
+                 marker="o", ms=s["ms"] * (0.35 if hl else 0.2),
+                 zorder=(3 if hl else 2))
+
+    xpad_right = 0.62
     axA.set_ylim(b_vals.min() - b_span * 0.06, b_vals.max() + b_span * 0.06)
-    axA.set_xlim(-3.5, 1 + xpad_right + 0.75)
+    # provisional xlim, wide enough that the two highlighted labels are
+    # never clipped during the measurement draw below -- axA is re-limited
+    # to the *measured* extent afterward, so this costs no final whitespace
+    axA.set_xlim(-3.0, 1 + xpad_right + 0.75)
 
-    for ordn in FIG7_ORDERINGS:
-        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
-        ly = label_y[ordn]
-        true_y = b_vals_by_name[ordn]
-        if abs(ly - true_y) > 1e-6:
-            axA.plot([-0.14, -0.03], [ly, true_y], color=c, lw=s["lw"] * 0.5, alpha=0.6, zorder=1)
-        axA.text(-0.16, ly, ordn, ha="right", va="center", fontsize=s["tick"], color=c,
-                 fontweight="bold" if ordn in FIG7_HIGHLIGHT else "normal")
+    for k in FIG7_HIGHLIGHT:
+        axA.text(-0.16, baseline[k], k, ha="right", va="center", fontsize=s["tick"],
+                 color=FIG7_HIGHLIGHT[k], fontweight="bold")
 
-    # the baseline-spread bracket must sit further left than every ordering
-    # label, or its double-headed arrow runs straight through the label text
-    # (this happened in an earlier version of this figure, since label width
-    # varies with the ordering name and a fixed offset can't account for
-    # that) -- measure the labels' actual rendered extent instead of
-    # guessing a fixed offset
+    # span brackets must sit outside the plotting area entirely -- left
+    # margin for the default spread, right margin for the optimised spread
+    # -- and the left one must clear the two highlighted labels' actual
+    # rendered extent (a fixed offset broke this in an earlier version:
+    # the bracket ran straight through the label text)
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     label_left_px = min(
         t.get_window_extent(renderer).x0
-        for t in axA.texts if t.get_text() in FIG7_ORDERINGS
+        for t in axA.texts if t.get_text() in FIG7_HIGHLIGHT
     )
     inv = axA.transData.inverted()
     bracket_x = inv.transform((label_left_px - 10, 0))[0]
@@ -1142,90 +1392,221 @@ def draw_fig7(style):
              ha="right", va="center", fontsize=s["tick"], rotation=90)
     axA.annotate("", xy=(1 + xpad_right, c_vals.max()), xytext=(1 + xpad_right, c_vals.min()),
                  arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"]))
-    # the compression factor lives right next to the spread it produced,
-    # rather than as a separate floating label competing for space with
-    # the ordering names on the crowded left side of the plot
     axA.text(1 + xpad_right + 0.05, (c_vals.max() + c_vals.min()) / 2,
-             f"{c_span:.2f} mHa\n({compression:.1f}$\\times$ tighter)",
+             f"{c_span:.2f} mHa\n({compression:.2f}$\\times$ tighter)",
              ha="left", va="center", fontsize=s["tick"], color=OI["vermillion"],
              fontweight="bold")
 
     axA.set_xlim(left_lim, 1 + xpad_right + 0.75)
     axA.set_xticks([0, 1])
-    axA.set_xticklabels(["default", "best\n(40 sampled ∪ default)"])
+    axA.set_xticklabels(["default", "best\n(candidates ∪ default)"])
     axA.set_ylabel("SQD subspace error (mHa)")
     axA.tick_params(right=True, labelright=True)
-    axA.set_title("A -- n=8 orderings", loc="left", fontsize=s["font"])
-    for spine in ("top",):
-        axA.spines[spine].set_visible(False)
+    axA.set_title(f"n={len(ALL_FIG7_CHAINS)} chains (8 H10 named + 12 held-out)",
+                  loc="left", fontsize=s["font"])
+    axA.spines["top"].set_visible(False)
 
-    # ---------------- Panel B: scatter ----------------
+    return fig, d
+
+
+def figure7a():
+    for style in ("paper", "slide"):
+        with plt.rc_context(rc(style)):
+            fig, r = draw_fig7a(style)
+            emit(fig, "fig7a_compression", style)
+    crossings = _count_crossings(r["baseline"], r["corrected"], ALL_FIG7_CHAINS)
+    caption(
+        "Figure 7a",
+        f"Do the two levers (same-spin ordering, anchor selection) interact? For "
+        f"n={len(ALL_FIG7_CHAINS)} H10 chains (8 named orderings from G1-lite + 12 "
+        f"held-out chains from the chain-aware transfer test), each line connects a "
+        f"chain's default-anchor error to its best-of-candidates-UNION-default "
+        f"error. The default-anchor spread is {r['b_span']:.2f} mHa; after anchor "
+        f"optimisation it compresses to {r['c_span']:.2f} mHa -- a "
+        f"{r['compression']:.2f}x reduction, so ordering still matters "
+        f"post-optimisation, just far less. rand029 (worst default, "
+        f"{r['baseline']['rand029']:.2f}->{r['corrected']['rand029']:.2f} mHa) "
+        f"crosses {crossings['rand029']} other chains' lines; rand030 (best "
+        f"default, {r['baseline']['rand030']:.2f} mHa, unchanged after "
+        f"optimisation) crosses none -- it is the single best chain both before "
+        f"and after. CRITICAL DATA NOTE: this figure's spreads and compression "
+        f"factor are recomputed with each chain's own default-anchor triple "
+        f"included in its candidate set (a strict min() against the uncorrected "
+        f"best-of-candidates value); chain_aware/step2_analysis_report.txt's own "
+        f"headline number for this same n=20 pool ({REPORTED_COMPRESSION_N20}x) "
+        f"is the UNCORRECTED value and does not match this figure's "
+        f"{r['compression']:.2f}x -- see stdout for the itemised recompute and "
+        f"why the corrected value can only be equal to or smaller than the "
+        f"report's. Source: experiments/outputs/g1_lite/, "
+        f"experiments/outputs/chain_aware/phaseB_b2_all.csv."
+    )
+
+
+def draw_fig7b(style):
+    s = STYLE[style]
+    d = figure7_n20_data()
+    baseline, corrected = d["baseline"], d["corrected"]
+    b_vals = np.array([baseline[k] for k in ALL_FIG7_CHAINS])
+    c_vals = np.array([corrected[k] for k in ALL_FIG7_CHAINS])
+
+    figsize = (PAPER_W, PAPER_W) if style == "paper" else (6.5, 6.0)
+    fig, axB = plt.subplots(figsize=figsize, layout="constrained")
+
     lo = min(b_vals.min(), c_vals.min())
     hi = max(b_vals.max(), c_vals.max())
     pad = (hi - lo) * 0.08
     axB.plot([lo - pad, hi + pad], [lo - pad, hi + pad], color=OI["black"],
              lw=s["lw"] * 0.8, ls=":", zorder=1)
-    for ordn in FIG7_ORDERINGS:
-        c = FIG7_HIGHLIGHT.get(ordn, FIG7_OTHER)
-        axB.scatter([baseline[ordn]], [corrected[ordn]], s=s["ms"] * 2.2, c=c,
-                    zorder=3, edgecolors="white", linewidths=s["marker_lw"] * 0.5)
+    for k in ALL_FIG7_CHAINS:
+        hl = k in FIG7_HIGHLIGHT
+        c = FIG7_HIGHLIGHT.get(k, FIG7_OTHER)
+        axB.scatter([baseline[k]], [corrected[k]], s=s["ms"] * (2.4 if hl else 1.6),
+                    c=c, zorder=(3 if hl else 2), edgecolors="white",
+                    linewidths=s["marker_lw"] * 0.5, alpha=(1.0 if hl else 0.75))
     rho, p = spearmanr(b_vals, c_vals)
-    ci_lo, ci_hi = bootstrap_ci(b_vals, c_vals, seed=zlib.crc32(b"g1_lite_fig7"))
-    axB.text(0.03, 0.97,
-             f"$\\rho$={rho:+.3f}\np={p:.3f}\n95% CI [{ci_lo:+.2f}, {ci_hi:+.2f}]\n"
-             f"n=8 -- inconclusive",
+    ci_lo, ci_hi = bootstrap_ci(b_vals, c_vals, seed=zlib.crc32(b"fig7_n20"))
+    axB.text(0.03, 0.97, f"$\\rho$={rho:+.3f}\np={p:.3f}\n95% CI [{ci_lo:+.2f}, {ci_hi:+.2f}]\n"
+             f"n={len(ALL_FIG7_CHAINS)}",
              transform=axB.transAxes, ha="left", va="top", fontsize=s["tick"])
     axB.set_xlim(lo - pad, hi + pad)
     axB.set_ylim(lo - pad, hi + pad)
-    # kept short deliberately: at slide width this label is inherently
-    # wider than axB itself, which makes constrained_layout's solution
-    # unstable across repeated draws (it can fit on one draw and clip on
-    # the next) -- shortening it so it fits within axB by construction
-    # removes the instability rather than gambling on the solver
     axB.set_xlabel("default-anchor error (mHa)")
     axB.set_ylabel("best-anchor error (mHa)")
-    axB.set_title("B -- y=x reference", loc="left", fontsize=s["font"])
     clean(axB)
 
-    return fig, dict(baseline=baseline, corrected=corrected, b_span=b_span,
-                      c_span=c_span, compression=compression, rho=rho, p=p,
-                      ci=(ci_lo, ci_hi))
+    return fig, dict(rho=rho, p=p, ci=(ci_lo, ci_hi), n=len(ALL_FIG7_CHAINS))
 
 
-def figure7():
+def figure7b():
     for style in ("paper", "slide"):
         with plt.rc_context(rc(style)):
-            fig, r = draw_fig7(style)
-            emit(fig, "fig7_lever_interaction", style)
+            fig, r = draw_fig7b(style)
+            emit(fig, "fig7b_baseline_vs_optimised", style)
     caption(
-        "Figure 7",
-        f"Do the two levers (same-spin ordering, anchor selection) interact? For "
-        f"n=8 H10 orderings (identity, physical, the best/median/worst 2 baselines "
-        f"of the 50 random orderings), Panel A connects each ordering's default-"
-        f"anchor error to its best-of-{{40 sampled anchor triples UNION its own "
-        f"default triple}} error. The baseline spread is {r['b_span']:.2f} mHa; "
-        f"after anchor optimisation it compresses to {r['c_span']:.2f} mHa -- a "
-        f"{r['compression']:.1f}x reduction, so ordering still matters "
-        f"post-optimisation, just far less. rand029 (worst baseline, "
-        f"{r['baseline']['rand029']:.2f}->{r['corrected']['rand029']:.2f} mHa) and "
-        f"rand030 (best baseline, {r['baseline']['rand030']:.2f} mHa, unchanged "
-        f"after optimisation) are highlighted: rand029 climbs from "
-        f"worst to mid-pack and crosses several other orderings' lines, while "
-        f"rand030 -- once its own default anchor is correctly included in its "
-        f"candidate pool -- stays the single best ordering both before and after, "
-        f"crossing no one. Panel B: baseline vs best-anchor error, n=8, with the "
-        f"y=x reference; Spearman rho={r['rho']:+.3f} (p={r['p']:.3f}, bootstrap "
-        f"95% CI [{r['ci'][0]:+.2f}, {r['ci'][1]:+.2f}]) -- at n=8 this is "
-        f"inconclusive, not evidence of no relationship; the CI spans from "
-        f"strongly negative to perfectly positive. IMPORTANT DATA NOTE: the "
-        f"original best-of-40 values did not include each ordering's own default "
-        f"anchor triple in its 40-sample candidate pool for 6 of 8 orderings "
-        f"(only identity and rand037's own default happened to already be among "
-        f"their 40 samples); this is silently harmless unless the default beats "
-        f"every sampled alternative, which happens for exactly one ordering here "
-        f"(rand030). All values in this figure are the corrected "
-        f"(40-sample UNION default) best -- see stdout for the itemised diff "
-        f"against the uncorrected best-of-40. Source: experiments/outputs/g1_lite/."
+        "Figure 7b (backup)",
+        f"Default-anchor vs best-anchor error, n={r['n']} H10 chains (same pool as "
+        f"Figure 7a), with the y=x reference. Spearman rho={r['rho']:+.3f} "
+        f"(p={r['p']:.3f}, bootstrap 95% CI [{r['ci'][0]:+.2f}, {r['ci'][1]:+.2f}]). "
+        f"Panel B of the former combined Figure 7, kept for backup/reference use. "
+        f"Source: experiments/outputs/g1_lite/, "
+        f"experiments/outputs/chain_aware/phaseB_b2_all.csv."
+    )
+
+
+# ========================================================================
+# FIGURE 8 -- reversal schematic (why anchors move but couplings don't)
+# ========================================================================
+
+# H10 "physical" and "physical_reverse" permutations (h10_baseline_R1.6/
+# h10_baseline_results.csv): physical_reverse's string is the exact
+# character-reversal of physical's. Per run_ordering_pipeline.py's
+# convention, permutation[i] IS the orbital placed at chain position i (the
+# inverse of positions_from()'s pos[orbital]=argsort(perm)), so the raw
+# digit string, read left to right, is already the layout order drawn below.
+PHYSICAL_PERM = "7281504936"
+PHYSICAL_REVERSE_PERM = "6394051827"
+PHYSICAL_ERR = 389.7149558584312
+PHYSICAL_REVERSE_ERR = 218.63787417716551
+FIG8_ANCHOR_POS = (0, 4, 8)  # position % 4 == 0, same anchor_mod=4 rule as Figure 7
+
+
+def draw_fig8(style):
+    s = STYLE[style]
+    layout_top = [int(c) for c in PHYSICAL_PERM]
+    layout_bot = [int(c) for c in PHYSICAL_REVERSE_PERM]
+    n = len(layout_top)
+    assert layout_bot == layout_top[::-1]  # "reversed" is a literal claim, not just a label
+
+    link_color = OI["blue"]
+    anchor_color = OI["vermillion"]
+
+    y_top, y_bot = 1.0, 0.0
+    r = 0.34
+
+    # geometry is fixed by n and the padding below regardless of style;
+    # compute the data aspect ratio up front and size the figure to match
+    # it exactly at a target width, rather than guessing a figsize and
+    # fighting set_aspect("equal") -- a mismatch there is what produces
+    # large empty margins above/below a wide, short schematic like this one
+    x_lo, x_hi = -2.9, (n - 1 + 1.0) + 2.9 + 2.2
+    y_lo, y_hi = y_bot - 1.05, y_top + 1.05
+    data_aspect = (x_hi - x_lo) / (y_hi - y_lo)
+    target_w = PAPER_W * 1.9 if style == "paper" else 13.5
+    figsize = (target_w, target_w / data_aspect)
+    fig, ax = plt.subplots(figsize=figsize, layout="constrained")
+
+    def draw_row(y, layout):
+        for i in range(n - 1):
+            ax.plot([i, i + 1], [y, y], color=link_color, lw=s["lw"] * 2.6,
+                    zorder=1, solid_capstyle="round")
+        for i, orb in enumerate(layout):
+            is_anchor = i in FIG8_ANCHOR_POS
+            face = anchor_color if is_anchor else "white"
+            txt_color = "white" if is_anchor else OI["black"]
+            ax.add_patch(mpatches.Circle((i, y), r, facecolor=face, edgecolor=OI["black"],
+                                          lw=s["marker_lw"] * 1.3, zorder=3))
+            ax.text(i, y, str(orb), ha="center", va="center", fontsize=s["font"] * 1.15,
+                    color=txt_color, fontweight="bold", zorder=4)
+
+    draw_row(y_top, layout_top)
+    draw_row(y_bot, layout_bot)
+
+    ax.text(-1.1, y_top, "layout", ha="right", va="center",
+            fontsize=s["font"] * 1.3, fontweight="bold")
+    ax.text(-1.1, y_bot, "layout\nreversed", ha="right", va="center",
+            fontsize=s["font"] * 1.3, fontweight="bold")
+
+    # placed clear of both rows (above the top row, below the bottom row)
+    # rather than squeezed between them, so neither annotation ever
+    # overlaps a circle regardless of font metrics
+    ax.text((n - 1) / 2, y_top + 0.62, "same-spin couplings: identical",
+            ha="center", va="bottom", fontsize=s["font"] * 1.15, color=link_color,
+            fontweight="bold")
+    ax.text((n - 1) / 2, y_bot - 0.62, "anchors: different orbitals",
+            ha="center", va="top", fontsize=s["font"] * 1.15, color=anchor_color,
+            fontweight="bold")
+
+    x_e = n - 1 + 1.0
+    ax.text(x_e, y_top, f"{PHYSICAL_ERR:.2f} mHa", ha="left", va="center",
+            fontsize=s["font"] * 1.25, fontweight="bold")
+    ax.text(x_e, y_bot, f"{PHYSICAL_REVERSE_ERR:.2f} mHa", ha="left", va="center",
+            fontsize=s["font"] * 1.25, fontweight="bold")
+
+    gap = PHYSICAL_ERR - PHYSICAL_REVERSE_ERR
+    x_bracket = x_e + 2.9
+    ax.annotate("", xy=(x_bracket, y_top), xytext=(x_bracket, y_bot),
+                arrowprops=dict(arrowstyle="<->", color=OI["black"], lw=s["lw"] * 1.4))
+    ax.text(x_bracket + 0.15, (y_top + y_bot) / 2, f"{gap:.0f} mHa",
+            ha="left", va="center", fontsize=s["font"] * 1.25, fontweight="bold")
+
+    ax.set_xlim(x_lo, x_hi)
+    ax.set_ylim(y_lo, y_hi)
+    ax.set_aspect("equal")
+    ax.set_axis_off()
+    return fig
+
+
+def figure8():
+    for style in ("paper", "slide"):
+        with plt.rc_context(rc(style)):
+            fig = draw_fig8(style)
+            emit(fig, "fig8_reversal_schematic", style)
+    gap = PHYSICAL_ERR - PHYSICAL_REVERSE_ERR
+    caption(
+        "Figure 8",
+        f"Why reversing the same-spin ordering changes the anchor-selection "
+        f"result: H10 'physical' (layout) and 'physical_reverse' (layout reversed) "
+        f"are the exact same chain read backwards, so their same-spin nearest-"
+        f"neighbour links are identical as a set -- reversing a chain doesn't "
+        f"change which orbitals are adjacent, only their left-right order. But the "
+        f"anchor rule (position % 4 == 0) selects positions, not orbitals: "
+        f"reversal moves the default-anchor triple from orbitals (7, 5, 3) to "
+        f"(6, 0, 2), a completely different set. Same-spin coupling is reversal-"
+        f"invariant; opposite-spin anchor placement is not. Result: "
+        f"{PHYSICAL_ERR:.2f} mHa (layout) vs {PHYSICAL_REVERSE_ERR:.2f} mHa "
+        f"(layout reversed), a {gap:.2f} mHa gap from reversal alone. Source: "
+        f"h10_baseline_R1.6/h10_baseline_results.csv ('physical'/'physical_reverse', "
+        f"seed 2026)."
     )
 
 
@@ -1268,18 +1649,44 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
   required 149-random-ordering sample size.
 - The shaded band and "Nx" annotation are the random set's own max/min
   ratio, computed at generation time (not cached).
+- The N2 panel annotates BOTH the full-range ratio (max/min, 8.0x) and the
+  p95/p5 ratio (2.7x): the full-range number is driven almost entirely by
+  one point (r102, 173.23 mHa vs. the next-highest point's 122.79 mHa), so
+  showing only it would overstate the typical spread. No point is removed
+  -- `n2_outlier_diagnostic()` prints the top-6 points, both ratios, and
+  Spearman rho with/without the largest point (-0.880 vs. -0.877, i.e. the
+  point is real signal, not an artifact) to stdout on every regeneration.
 
 ## Figure 2 -- the mechanism
 - Panel A (N2, n=149): `outputs/stage1/nonoracle_scores.csv`,
   columns `captured`, `err_mHa` (random `r###` rows only)
 - Panel B (H10, n=50): `experiments/outputs/score_audit_R1.6/all_scores.csv`,
   columns `captured`, `err_mHa` (random `rand###` rows only)
-- Panel C (3x n=40, shared y-axis): `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
+- Panel C (Cr2, CAS(12,12), n=180): `experiments/outputs/tm_transfer/stage2_sqd.csv`,
+  columns `captured`, `err_mHa`, filtered to `role == 'triple'` (60 anchor
+  triples x 3 chains -- identity, random, reverse -- pooled; per-chain rho
+  is -0.971/-0.967/-0.971 per `tm_transfer/stage3_report.txt`, so pooling
+  repeats the same relationship three times rather than averaging over
+  different ones). Demonstrates the capture mechanism replicates on a
+  transition-metal active space, the project's intended application domain.
+- Ceiling reference lines: N2 (0.9866) and H10 (0.7554) are supplied
+  ansatz-capacity constants, not derived from the plotted CSVs, hardcoded
+  in `figures.py` as `CEILING`. Cr2's (0.8813) is different: it IS a value
+  computed by the tm_transfer run itself (`ideal_ceiling` in
+  `tm_transfer/stage3_report.txt`), read here as that literal number.
+- Panels are side by side; like Figure 7a, the paper variant is 170mm
+  (double-column) since three fully-labelled independent-axis panels don't
+  fit legibly at 85mm.
+- The H10 anchor-selection-axis panel previously shown here (identity/
+  physical/rand007, n=40 triples each) moves to Figure 2b, for backup
+  reference -- displaced by Cr2's addition, not removed from the record.
+
+## Figure 2b (backup) -- H10 anchor-selection axis
+- `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
   columns `ordering`, `captured`, `err_mHa`, filtered to
-  `identity`/`physical`/`rand007`
-- Ceiling reference lines (N2: 0.9866, H10: 0.7554) are supplied ansatz-
-  capacity constants, not derived from the plotted CSVs -- they are not
-  present in any cached file and are hardcoded in `figures.py` as `CEILING`.
+  `identity`/`physical`/`rand007` (n=40 triples each, shared y-axis). Same
+  mechanism as Figure 2, on the anchor-selection axis instead of the
+  same-spin-ordering axis. For backup/reference use.
 
 ## Figure 3 -- two levers
 - Same-spin ordering lever: `experiments/outputs/score_audit_R1.6/all_scores.csv`,
@@ -1324,61 +1731,101 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 
 {variant_table}
 
-## Figure 7 -- lever interaction and spread compression
+## Figure 6b -- the cancellation, alone
+- Same source and bootstrap method as Figure 6, restricted to the three
+  retained_J rows (combined / same-spin only / opposite-spin only). A
+  single-message slide figure at generously large font; Figure 6's 11-row
+  version is unchanged and remains the report figure.
+
+## Figure 7a -- lever interaction and spread compression
 - `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
   columns `ordering`, `err_mHa` (default-anchor "baseline" error), `permutation`
   (used to derive each ordering's own default anchor triple: position % 4 == 0,
   where position = argsort(permutation) -- the same convention as
-  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for the 8 orderings
-  (`identity`, `physical`, `rand007`, `rand029`, `rand030`, `rand032`,
-  `rand037`, `rand047`), seed 2026.
-- `experiments/outputs/g1_lite/g1_all.csv`, columns `ordering`, `triple`,
-  `err_mHa`: the 40 sampled anchor triples per ordering (n=320 rows total).
-- Correction applied before drawing (see IMPORTANT note in the Figure 7
-  caption): for each ordering, "best" = min(best-of-the-40-sampled-triples,
-  the default-anchor baseline), since the default triple's error is exactly
-  the baseline value and was absent from the 40-sample pool for 6 of 8
-  orderings. Only rand030 changes under this correction (best-of-40 alone
-  was 180.81 mHa; corrected best = 168.67 mHa, its own default). The
-  per-ordering diff is printed to stdout on every regeneration.
-- Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
-  corrected values at generation time (not cached), using the same manual
-  paired-bootstrap method as Figure 6.
-- Panel A's two vertical spread brackets use the same corrected best values,
-  so the figure, caption, and stdout all report the same spread (61.65 mHa,
-  4.6x) -- this differs from `g1_report.txt`'s own headline (59.84 mHa,
-  computed from best-of-40 alone, without the default-triple correction).
-- Panels A and B are side by side (60/40 width split, ~2:1 aspect); Figure
-  7's paper variant is 170mm (double-column) rather than the 85mm used by
-  every other figure here, since 85mm is too narrow to hold both panels
-  legibly at that aspect. The left-hand spread bracket's x-position is
-  computed from the actual rendered extent of the ordering-name labels
-  (not a fixed offset), so it can never run through them regardless of
-  label text length.
+  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for 8 named H10
+  orderings (`identity`, `physical`, `rand007`, `rand029`, `rand030`,
+  `rand032`, `rand037`, `rand047`), seed 2026.
+- `experiments/outputs/g1_lite/g1_all.csv` (40 sampled anchor triples per
+  ordering) and `experiments/outputs/chain_aware/phaseB_b2_all.csv` (43
+  candidate triples + explicit default-anchor and no-ab-floor rows per
+  chain, for 12 held-out H10 chains never used elsewhere) -- together, 20
+  chains total.
+- Correction applied before drawing (see CRITICAL DATA NOTE in the Figure
+  7a caption): for each chain, "best" = min(best-of-its-sampled-candidates,
+  its own default-anchor baseline), since the default triple's error is
+  exactly the baseline value and was absent from the candidate pool for
+  most chains. Only rand030 actually changes under this correction
+  (best-of-40 alone was 180.81 mHa; corrected best = 168.67 mHa, its own
+  default) -- the itemised diff for every chain checked is printed to
+  stdout on every regeneration.
+- `chain_aware/step2_analysis_report.txt` (section B3.5) reports this same
+  n=20 pool's compression factor as 3.15x -- but that number is
+  best-of-candidates alone, WITHOUT the default-triple correction above.
+  Applying the correction can only lower or hold each chain's best value,
+  never raise it; here it lowers rand030's best and so widens (not
+  narrows) the best-anchor spread, meaning the corrected compression factor
+  is mathematically bounded to be <= 3.15x. The actual recomputed value is
+  printed to stdout on every regeneration and used in the figure and
+  caption; it does not equal 3.15x, and the stdout output says so
+  explicitly rather than silently overriding the mismatch.
+- Ordering labels sit outside the left plotting area, right-aligned; the
+  two span-annotation brackets sit further outside still, positioned from
+  the labels' actual rendered extent (not a fixed offset) so they can never
+  run through the labels regardless of text length. rand029 (worst default)
+  and rand030 (best default) are highlighted; all other chains are shown
+  in grey, unlabelled, to keep the panel legible at n=20.
+- Side by side by construction: a single wide panel at ~2:1 aspect. Like
+  Figure 2, the paper variant is 170mm (double-column) rather than 85mm.
+
+## Figure 7b (backup) -- baseline vs optimised, n=20
+- Same n=20 pool and correction as Figure 7a. Scatter of default-anchor vs
+  best-anchor error with the y=x reference, Spearman rho and bootstrap 95%
+  CI. Panel B of the former combined Figure 7, kept for backup/reference use.
+
+## Figure 8 -- reversal schematic
+- `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
+  `permutation` and `err_mHa` columns for `physical` (389.71 mHa) and
+  `physical_reverse` (218.64 mHa), seed 2026. `physical_reverse`'s
+  permutation string is the exact character-reversal of `physical`'s
+  (verified in `figures.py` with an assert, not just asserted in prose).
+- A schematic, not a data plot: no axes, no gridlines. Two rows of 10
+  circles (orbital indices read directly off the permutation string, since
+  `permutation[i]` is the orbital at chain position `i`); same-spin
+  nearest-neighbour links (adjacent circles) drawn identically in both
+  rows, since reversing a chain preserves which orbitals are adjacent;
+  positions 0/4/8 (the `position % 4 == 0` anchor rule, same as Figure 7a)
+  highlighted in both rows, landing on different orbitals in each ((7, 5,
+  3) vs (6, 0, 2)) because the rule selects positions, not orbitals. This
+  is the mechanism behind Figure 1's `physical`/`physical_reverse` gap.
 
 ## Regenerating
 ```
 python3 experiments/figures.py
 ```
-Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figure 7 at 170mm --
-see its section above) and `<name>_slide.pdf` /
+Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figures 2 and 7a at
+170mm -- see their sections above) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
-legible and clipping-free) per figure into this directory. Prints all seven
-suggested captions to stdout, followed by a render-verification report: for
-every file, its pixel dimensions (read back from the saved PNG with PIL)
-and whether any annotation was found to extend beyond the saved canvas.
+legible and clipping-free) per figure into this directory. Prints all
+eleven suggested captions to stdout, followed by a render-verification
+report: for every file, its pixel dimensions (read back from the saved PNG
+with PIL) and whether any annotation was found to extend beyond the saved
+canvas.
 """.format(variant_table=_variant_mapping_table())
 
 
 def main():
     figure1()
     figure2()
+    figure2b()
     figure3()
     figure4()
     figure5()
     figure6()
-    figure7()
+    figure6b()
+    figure7a()
+    figure7b()
+    figure8()
 
     (OUTDIR / "README.md").write_text(README)
 
@@ -1386,8 +1833,8 @@ def main():
     for name in sorted(ALL_WRITTEN):
         print(f"  {name}")
 
-    print("\nFigure 7 default-anchor-inclusion check (best-of-40 vs "
-          "best-of-40-UNION-default):")
+    print("\nFigure 7 default-anchor-inclusion check (best-of-candidates vs "
+          "best-of-candidates-UNION-default, all 20 chains):")
     if CHANGE_REPORT:
         for line in CHANGE_REPORT:
             print(f"  {line}")

@@ -23,18 +23,44 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
   required 149-random-ordering sample size.
 - The shaded band and "Nx" annotation are the random set's own max/min
   ratio, computed at generation time (not cached).
+- The N2 panel annotates BOTH the full-range ratio (max/min, 8.0x) and the
+  p95/p5 ratio (2.7x): the full-range number is driven almost entirely by
+  one point (r102, 173.23 mHa vs. the next-highest point's 122.79 mHa), so
+  showing only it would overstate the typical spread. No point is removed
+  -- `n2_outlier_diagnostic()` prints the top-6 points, both ratios, and
+  Spearman rho with/without the largest point (-0.880 vs. -0.877, i.e. the
+  point is real signal, not an artifact) to stdout on every regeneration.
 
 ## Figure 2 -- the mechanism
 - Panel A (N2, n=149): `outputs/stage1/nonoracle_scores.csv`,
   columns `captured`, `err_mHa` (random `r###` rows only)
 - Panel B (H10, n=50): `experiments/outputs/score_audit_R1.6/all_scores.csv`,
   columns `captured`, `err_mHa` (random `rand###` rows only)
-- Panel C (3x n=40, shared y-axis): `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
+- Panel C (Cr2, CAS(12,12), n=180): `experiments/outputs/tm_transfer/stage2_sqd.csv`,
+  columns `captured`, `err_mHa`, filtered to `role == 'triple'` (60 anchor
+  triples x 3 chains -- identity, random, reverse -- pooled; per-chain rho
+  is -0.971/-0.967/-0.971 per `tm_transfer/stage3_report.txt`, so pooling
+  repeats the same relationship three times rather than averaging over
+  different ones). Demonstrates the capture mechanism replicates on a
+  transition-metal active space, the project's intended application domain.
+- Ceiling reference lines: N2 (0.9866) and H10 (0.7554) are supplied
+  ansatz-capacity constants, not derived from the plotted CSVs, hardcoded
+  in `figures.py` as `CEILING`. Cr2's (0.8813) is different: it IS a value
+  computed by the tm_transfer run itself (`ideal_ceiling` in
+  `tm_transfer/stage3_report.txt`), read here as that literal number.
+- Panels are side by side; like Figure 7a, the paper variant is 170mm
+  (double-column) since three fully-labelled independent-axis panels don't
+  fit legibly at 85mm.
+- The H10 anchor-selection-axis panel previously shown here (identity/
+  physical/rand007, n=40 triples each) moves to Figure 2b, for backup
+  reference -- displaced by Cr2's addition, not removed from the record.
+
+## Figure 2b (backup) -- H10 anchor-selection axis
+- `experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv`,
   columns `ordering`, `captured`, `err_mHa`, filtered to
-  `identity`/`physical`/`rand007`
-- Ceiling reference lines (N2: 0.9866, H10: 0.7554) are supplied ansatz-
-  capacity constants, not derived from the plotted CSVs -- they are not
-  present in any cached file and are hardcoded in `figures.py` as `CEILING`.
+  `identity`/`physical`/`rand007` (n=40 triples each, shared y-axis). Same
+  mechanism as Figure 2, on the anchor-selection axis instead of the
+  same-spin-ordering axis. For backup/reference use.
 
 ## Figure 3 -- two levers
 - Same-spin ordering lever: `experiments/outputs/score_audit_R1.6/all_scores.csv`,
@@ -93,47 +119,83 @@ cached N2 CSV spells one of these `max_retainedJ`; `RENAME_ORDERING` in
 | `retained_J_samespin` | retained_J (same-spin only) |
 | `retained_J_oppspin` | retained_J (opposite-spin only) |
 
-## Figure 7 -- lever interaction and spread compression
+## Figure 6b -- the cancellation, alone
+- Same source and bootstrap method as Figure 6, restricted to the three
+  retained_J rows (combined / same-spin only / opposite-spin only). A
+  single-message slide figure at generously large font; Figure 6's 11-row
+  version is unchanged and remains the report figure.
+
+## Figure 7a -- lever interaction and spread compression
 - `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
   columns `ordering`, `err_mHa` (default-anchor "baseline" error), `permutation`
   (used to derive each ordering's own default anchor triple: position % 4 == 0,
   where position = argsort(permutation) -- the same convention as
-  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for the 8 orderings
-  (`identity`, `physical`, `rand007`, `rand029`, `rand030`, `rand032`,
-  `rand037`, `rand047`), seed 2026.
-- `experiments/outputs/g1_lite/g1_all.csv`, columns `ordering`, `triple`,
-  `err_mHa`: the 40 sampled anchor triples per ordering (n=320 rows total).
-- Correction applied before drawing (see IMPORTANT note in the Figure 7
-  caption): for each ordering, "best" = min(best-of-the-40-sampled-triples,
-  the default-anchor baseline), since the default triple's error is exactly
-  the baseline value and was absent from the 40-sample pool for 6 of 8
-  orderings. Only rand030 changes under this correction (best-of-40 alone
-  was 180.81 mHa; corrected best = 168.67 mHa, its own default). The
-  per-ordering diff is printed to stdout on every regeneration.
-- Spearman rho and its bootstrap 95% CI (Panel B) are recomputed on the
-  corrected values at generation time (not cached), using the same manual
-  paired-bootstrap method as Figure 6.
-- Panel A's two vertical spread brackets use the same corrected best values,
-  so the figure, caption, and stdout all report the same spread (61.65 mHa,
-  4.6x) -- this differs from `g1_report.txt`'s own headline (59.84 mHa,
-  computed from best-of-40 alone, without the default-triple correction).
-- Panels A and B are side by side (60/40 width split, ~2:1 aspect); Figure
-  7's paper variant is 170mm (double-column) rather than the 85mm used by
-  every other figure here, since 85mm is too narrow to hold both panels
-  legibly at that aspect. The left-hand spread bracket's x-position is
-  computed from the actual rendered extent of the ordering-name labels
-  (not a fixed offset), so it can never run through them regardless of
-  label text length.
+  `run_ordering_pipeline.py`'s `CFG['anchor_mod']=4`), for 8 named H10
+  orderings (`identity`, `physical`, `rand007`, `rand029`, `rand030`,
+  `rand032`, `rand037`, `rand047`), seed 2026.
+- `experiments/outputs/g1_lite/g1_all.csv` (40 sampled anchor triples per
+  ordering) and `experiments/outputs/chain_aware/phaseB_b2_all.csv` (43
+  candidate triples + explicit default-anchor and no-ab-floor rows per
+  chain, for 12 held-out H10 chains never used elsewhere) -- together, 20
+  chains total.
+- Correction applied before drawing (see CRITICAL DATA NOTE in the Figure
+  7a caption): for each chain, "best" = min(best-of-its-sampled-candidates,
+  its own default-anchor baseline), since the default triple's error is
+  exactly the baseline value and was absent from the candidate pool for
+  most chains. Only rand030 actually changes under this correction
+  (best-of-40 alone was 180.81 mHa; corrected best = 168.67 mHa, its own
+  default) -- the itemised diff for every chain checked is printed to
+  stdout on every regeneration.
+- `chain_aware/step2_analysis_report.txt` (section B3.5) reports this same
+  n=20 pool's compression factor as 3.15x -- but that number is
+  best-of-candidates alone, WITHOUT the default-triple correction above.
+  Applying the correction can only lower or hold each chain's best value,
+  never raise it; here it lowers rand030's best and so widens (not
+  narrows) the best-anchor spread, meaning the corrected compression factor
+  is mathematically bounded to be <= 3.15x. The actual recomputed value is
+  printed to stdout on every regeneration and used in the figure and
+  caption; it does not equal 3.15x, and the stdout output says so
+  explicitly rather than silently overriding the mismatch.
+- Ordering labels sit outside the left plotting area, right-aligned; the
+  two span-annotation brackets sit further outside still, positioned from
+  the labels' actual rendered extent (not a fixed offset) so they can never
+  run through the labels regardless of text length. rand029 (worst default)
+  and rand030 (best default) are highlighted; all other chains are shown
+  in grey, unlabelled, to keep the panel legible at n=20.
+- Side by side by construction: a single wide panel at ~2:1 aspect. Like
+  Figure 2, the paper variant is 170mm (double-column) rather than 85mm.
+
+## Figure 7b (backup) -- baseline vs optimised, n=20
+- Same n=20 pool and correction as Figure 7a. Scatter of default-anchor vs
+  best-anchor error with the y=x reference, Spearman rho and bootstrap 95%
+  CI. Panel B of the former combined Figure 7, kept for backup/reference use.
+
+## Figure 8 -- reversal schematic
+- `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv`,
+  `permutation` and `err_mHa` columns for `physical` (389.71 mHa) and
+  `physical_reverse` (218.64 mHa), seed 2026. `physical_reverse`'s
+  permutation string is the exact character-reversal of `physical`'s
+  (verified in `figures.py` with an assert, not just asserted in prose).
+- A schematic, not a data plot: no axes, no gridlines. Two rows of 10
+  circles (orbital indices read directly off the permutation string, since
+  `permutation[i]` is the orbital at chain position `i`); same-spin
+  nearest-neighbour links (adjacent circles) drawn identically in both
+  rows, since reversing a chain preserves which orbitals are adjacent;
+  positions 0/4/8 (the `position % 4 == 0` anchor rule, same as Figure 7a)
+  highlighted in both rows, landing on different orbitals in each ((7, 5,
+  3) vs (6, 0, 2)) because the rule selects positions, not orbitals. This
+  is the mechanism behind Figure 1's `physical`/`physical_reverse` gap.
 
 ## Regenerating
 ```
 python3 experiments/figures.py
 ```
-Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figure 7 at 170mm --
-see its section above) and `<name>_slide.pdf` /
+Outputs `<name>_paper.pdf` / `.png` (85mm width, except Figures 2 and 7a at
+170mm -- see their sections above) and `<name>_slide.pdf` /
 `.png` (widescreen, ~16:9 -- a few figures are sized modestly wider or
 taller than exactly 16:9 where that many rows/panels needed it to stay
-legible and clipping-free) per figure into this directory. Prints all seven
-suggested captions to stdout, followed by a render-verification report: for
-every file, its pixel dimensions (read back from the saved PNG with PIL)
-and whether any annotation was found to extend beyond the saved canvas.
+legible and clipping-free) per figure into this directory. Prints all
+eleven suggested captions to stdout, followed by a render-verification
+report: for every file, its pixel dimensions (read back from the saved PNG
+with PIL) and whether any annotation was found to extend beyond the saved
+canvas.

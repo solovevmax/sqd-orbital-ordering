@@ -1,5 +1,139 @@
 
 ==============================================================================
+CHAIN-AWARE SCORE v2 -- CORRECTED FRAMING: DISTRIBUTIONAL PERFORMANCE FIRST
+==============================================================================
+The worst-case-only framing in the original report understated how well S0
+performs: it is a single weak chain among 18 uniformly strong ones, not a
+borderline score. This report leads with the full distribution; worst-case
+numbers are kept below because they support the invariance argument (S0 never
+flips sign, unlike T1/T2), but they are not the headline.
+
+==============================================================================
+PRIMARY SUMMARY -- distribution across all 18 chains
+==============================================================================
+
+S0 (n=18 chains):
+  rho_captured:  median=+0.703  mean=+0.646  min=+0.361  max=+0.809
+                 wrong-sign (negative): 0/18   significant (p<0.05): 18/18
+  rho_sqd:       median=-0.688  mean=-0.616  min=-0.819  max=-0.280
+                 wrong-sign (positive): 0/18   significant (p<0.05): 17/18
+  regret_frac:   median=0.347  mean=0.348  max=1.152   exceeding 1.0: 1/18
+
+T1 (n=18 chains):
+  rho_captured:  median=-0.149  mean=-0.144  min=-0.486  max=+0.218
+                 wrong-sign (negative): 14/18   significant (p<0.05): 5/18
+  rho_sqd:       median=+0.179  mean=+0.155  min=-0.253  max=+0.463
+                 wrong-sign (positive): 15/18   significant (p<0.05): 5/18
+  regret_frac:   median=0.580  mean=0.707  max=1.730   exceeding 1.0: 4/18
+
+T2 (n=18 chains):
+  rho_captured:  median=-0.233  mean=-0.209  min=-0.644  max=+0.156
+                 wrong-sign (negative): 15/18   significant (p<0.05): 7/18
+  rho_sqd:       median=+0.174  mean=+0.175  min=-0.205  max=+0.620
+                 wrong-sign (positive): 14/18   significant (p<0.05): 7/18
+  regret_frac:   median=0.981  mean=1.175  max=2.930   exceeding 1.0: 9/18
+
+S0 in one line: median rho_captured=+0.703, correct sign and significant at 18/18 and 18/18 chains respectively, median regret 0.347, and only 1/18 chains with regret>1.0.
+
+==============================================================================
+WORST CASE (kept for the invariance argument, not the headline)
+==============================================================================
+  S0: worst-case rho(captured) = +0.361 at N2/r039
+  T1: worst-case rho(captured) = -0.486 at H10/newchain03
+  T2: worst-case rho(captured) = -0.644 at H10/newchain01
+
+S0 never flips sign across any of the 18 chains (0/18 wrong-sign) -- this is the
+invariance property worth keeping visible: even at its single weakest chain, S0
+remains a positively-correlated, statistically significant predictor of capture.
+T1 and T2 flip sign at a majority of chains (14/18 and 15/18 respectively) and are
+frequently anti-correlated -- the worst-case numbers for T1/T2 are not outliers,
+they are representative of a generally unreliable score.
+
+==============================================================================
+NEWCHAIN11 DEEP DIVE -- S0's one regret_frac>1.0 chain
+==============================================================================
+S0's top pick: (0, 1, 9)  (err_sqd=222.43 mHa)
+  rank among 43 candidates by true err_sqd: 20/43
+  true best: (2, 4, 8)  (err_sqd=171.65 mHa)
+  gap to true best: 50.78 mHa
+
+==============================================================================
+Mechanism: an exact, chain-invariant tie in S0
+==============================================================================
+S0 is chain-invariant and ties EXACTLY (S0=12.151582) between ['(0, 1, 9)', '(0, 8, 9)'] at every one of the 12 held-out chains (and identity) -- both
+triples share anchor orbitals {0,9}, differing only in the third (1 vs 8); their
+Jab diagonal entries at orbitals 1 and 8 are numerically identical for this system.
+The tie is broken deterministically in favour of (0,1,9) by lexicographic ordering
+(itertools.combinations lists it before (0,8,9)) -- not by anything informative about
+which is the better choice at a given chain.
+
+The tie recurs at all 13 chains where both triples were evaluated; the
+lexicographic pick (0,1,9) is worse than (0,8,9) at 6/13 of them:
+     chain    err_019    err_089        gap
+  identity 247.278583 257.114354  -9.835770
+newchain00 176.021861 268.569842 -92.547981
+newchain01 176.235370 270.214154 -93.978784
+newchain02 219.114686 173.025614  46.089072
+newchain03 220.306536 268.624498 -48.317962
+newchain04 261.275158 272.150584 -10.875426
+newchain05 220.216024 268.960431 -48.744407
+newchain06 219.017568 173.025614  45.991954
+newchain07 219.114686 218.468046   0.646640
+newchain08 221.904279 172.649848  49.254430
+newchain09 227.600651 208.953745  18.646906
+newchain10 256.199690 256.307393  -0.107703
+newchain11 222.433917 175.542126  46.891791
+
+But regret_frac only exceeds 1.0 at newchain11. At the other chains where (0,1,9)
+loses the tie (newchain02, newchain06, newchain08), the SAME ~47-51 mHa absolute
+cost normalises to regret_frac ['0.460', '0.541', '0.473']
+respectively -- comfortably under 1.0.
+
+==============================================================================
+Why newchain11 specifically: an unusually compressed error landscape
+==============================================================================
+                 floor   err_range  achieved_capture_ceiling  rand_regret_denom
+chain                                                                          
+newchain00  460.794399  215.517846                  0.717193          70.967804
+newchain01  471.222841  295.069386                  0.717277         108.345103
+newchain02  369.198838  205.191012                  0.723980         105.707985
+newchain03  387.221477  198.549616                  0.709812          55.575755
+newchain04  457.965109  197.088626                  0.616929         113.941751
+newchain05  297.277383  112.654543                  0.673052          62.859888
+newchain06  373.040707  202.590004                  0.723980          84.949708
+newchain07  361.029749  188.487076                  0.711454          81.328403
+newchain08  453.568989  286.766098                  0.722838         104.221372
+newchain09  371.410079  167.346254                  0.677735         125.672400
+newchain10  458.378461  235.417269                  0.629756         140.156076
+newchain11  248.237464   89.484655                  0.721582          44.064551
+
+newchain11 vs. the other 11 held-out chains:
+  floor:                    248.24 mHa vs. others' mean 405.56 (range 297.28-471.22) -- LOWEST of all 12, by a wide margin
+  err range:                89.48 mHa vs. others' mean 209.52 (range 112.65-295.07) -- SMALLEST of all 12, less than half the next-smallest (newchain05, 112.65 mHa)
+  achieved capture ceiling: 0.7216 vs. others' mean 0.6931 (range 0.6169-0.7240) -- near the top of the range, not an outlier on this axis
+  rand_regret denominator:  44.06 mHa vs. others' mean 95.79 -- the smallest denominator of the 12, which is
+  what converts the shared tie's ~51 mHa absolute cost into the only regret_frac>1.0.
+
+==============================================================================
+CHARACTERISATION
+==============================================================================
+newchain11 is a single anomalous chain, not a sign of systematic S0 failure. Its
+regret_frac>1.0 has an identified, structural cause: S0 has a genuine, chain-invariant
+EXACT tie between two real anchor choices that differ by ~47-51 mHa in true outcome,
+broken by an uninformative lexicographic rule; the lexicographic pick is the worse of
+the two at 6/13 chains where both were evaluated (identity + the 12
+held-out chains), yet regret_frac exceeds 1.0 ONLY at newchain11 -- because that chain
+independently has the smallest error range and lowest floor of the set, shrinking the
+normalisation denominator (44.06 mHa) far more than the tie's absolute cost shrinks.
+S0's correlation with captured at newchain11 (+0.609, correct sign, p<0.05) is unaffected
+by this -- the tie only degrades the single top PICK, not the score's overall ranking
+quality.
+
+##############################################################################
+# ORIGINAL REPORT (per-chain tables, T1 sweep, first verdict) -- kept below
+##############################################################################
+
+==============================================================================
 CHAIN-AWARE SCORE v2 -- targeting CAPTURE, not variational energy
 ==============================================================================
 Loaded 400 transmission rows + 516 phaseB rows (sha256 transmission=e0946396951a, phaseB=0e677c034a94)

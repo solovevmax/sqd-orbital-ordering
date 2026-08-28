@@ -29,5 +29,27 @@
   "v3_any_confound": true,
   "v4_ratio_layout_to_seed": 1.3870916969831013,
   "a4_sanity_pass": "True",
-  "generated": "2026-08-28T15:31:26"
+  "generated": "2026-08-28T15:31:26",
+  "followup_git_commit": "5452f7c7bd378c86c8f815d5a8dc7bf68c40cded",
+  "q1_logical_cv": 0.0027171244715236387,
+  "q1_logical_n_distinct": 3,
+  "q1_posthoc_cv": 0.050571959605063214,
+  "q1_logical_sd_fraction_of_posthoc_sd": 0.04379274431515087,
+  "q1_rho_logical_2q_vs_S0": {
+    "rho": 0.5322816409936505,
+    "p": 3.928909135554051e-10
+  },
+  "q2_gates_per_mHa": {
+    "H10 identity": -0.8795562599048936,
+    "H10 physical": 1.547159404302255,
+    "N2 identity": -115.89473684210539,
+    "Cr2 identity": -72.69309989701343
+  },
+  "q2_depth_per_mHa": {
+    "H10 identity": -10.42789223454833,
+    "H10 physical": 0.06343077771648867,
+    "N2 identity": -189.34210526315786,
+    "Cr2 identity": -129.34088568486098
+  },
+  "generated_followup": "2026-08-28T15:39:55"
 }

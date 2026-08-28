@@ -55,3 +55,39 @@ specifically, and confirms same-spin ordering (not anchor selection) is
 the dominant driver of hardware resource variation. See `report.txt`,
 `a1_by_triple.csv`, `a2_by_chain.csv`, `a3_table.csv`, `v3_table.csv`,
 `all_rows.csv` (every (layout, seed) row).
+
+**Follow-up (`experiments/transpilation_audit_followup.py`):**
+
+*Q1 -- where does the anchor axis's 5.1% CV come from?* All 120 triples
+retain the same PAIR COUNT (19 same-spin + 3 opposite-spin) by
+construction, so gate count should match unless something else varies.
+Measured the 2Q gate count of the logical circuit translated to the same
+basis gate set but with NO coupling map (no layout, no routing, no
+SWAPs): CV=0.27% (3 distinct values, range 10772-10868), versus 5.1% CV
+post-routing on the same 120 triples. Logical-circuit sd is only 4.4% of
+post-routing sd, so **routing/SWAP insertion (option a) accounts for the
+large majority (~96%) of the variation** -- but not all of it: a small,
+real basis-gate-decomposition effect survives even with no coupling map
+at all (option b -- gate counts depend on the specific retained numerical
+parameter values, not just the retained pair count). Circuit-construction
+non-invariance (option c) is ruled out -- the same 3 distinct logical
+values recur across many triples, consistent with decomposition
+sensitivity to parameter values, not a construction bug.
+
+*Q2 -- gates per mHa recovered, A3 default-vs-best pairs* (negative =
+resources fell alongside the improvement, a net win on both axes;
+positive = a real per-mHa cost):
+
+| Pair | d_err (mHa) | d_2Q gates | gates per mHa |
+|---|---|---|---|
+| H10 identity | -75.72 | -66.6 | -0.88 (clean) |
+| H10 physical | -217.56 | +336.6 | **+1.55** (costs 1.5 gates/mHa) |
+| N2 identity | -7.60 | -880.8 | -115.89 (clean) |
+| Cr2 identity | -38.84 | -2823.4 | -72.69 (clean) |
+
+H10/physical is the only pair with a positive (cost-bearing) value, and
+even there the cost is modest (1.55 2Q gates per mHa of accuracy
+recovered, against a >26,000-gate circuit). Full detail in
+`q1_logical_rows.csv`, `q1_comparison.csv`, `v3_table.csv` (now with
+`gates_per_mHa`/`depth_per_mHa` columns), `report.txt`,
+`metadata.json`.

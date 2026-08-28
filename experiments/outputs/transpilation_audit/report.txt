@@ -1,5 +1,44 @@
 
 ==============================================================================
+TRANSPILATION AUDIT FOLLOW-UP -- Q1 (pre-routing decomposition) and Q2 (gates per mHa)
+==============================================================================
+Logical-only basis gate set (no coupling map): ['cx', 'id', 'rz', 'sx', 'x', 'reset']
+
+==============================================================================
+Q1 -- 2Q gate count BEFORE routing, all 120 H10 identity anchor triples
+==============================================================================
+Logical (pre-routing) 2Q gate count across 120 triples:
+  mean=10839.20  sd=29.451  CV=0.2717%  range=[10772,10868]  n_distinct_values=3
+
+Post-routing (full heavy-hex pipeline) 2Q gate count, same 120 triples:
+  mean=13298.26  sd=672.519  CV=5.057%
+
+Routing-added gates (posthoc - logical) per triple: mean=2459.06  sd=676.138  range=[758,3712]
+
+Variance decomposition: logical-circuit variance = 867.4 (sd=29.45), post-routing variance = 452281.9 (sd=672.52).
+Logical-circuit sd is 4.4% of post-routing sd -- routing/SWAP insertion accounts for the large majority of the variation, but NOT all of it: a small, real pre-routing effect of 0.2717% CV survives even with no coupling map at all.
+
+rho(logical 2Q gates, S0) = +0.532 (p=3.93e-10)
+
+==============================================================================
+Q1 VERDICT
+==============================================================================
+The logical (pre-routing) circuit's 2Q gate count is NOT perfectly constant (CV=0.2717%, 3 distinct values across 120 triples) -- there is a real, small basis-gate-decomposition effect (option b: gate counts depend on the specific retained numerical parameter values, not just the retained PAIR COUNT, which is identical -19 aa + 3 ab- for every triple by construction) on top of the dominant routing effect (option a). Quantitatively: logical-circuit sd is 4.4% of post-routing sd, so routing accounts for the large majority of the 5.1% CV, but not all of it.
+
+==============================================================================
+Q2 -- gates per mHa recovered, A3 default-vs-best pairs
+==============================================================================
+Sign convention: negative gates_per_mHa means resources DECREASED alongside the accuracy improvement (a net win on both axes); positive means resources increased per mHa of accuracy gained (a real cost).
+  H10 identity    d_err=-75.72 mHa   d_2Q=-66.6   gates_per_mHa=-0.88   depth_per_mHa=-10.43   CLEAN (resources fell)
+  H10 physical    d_err=-217.56 mHa   d_2Q=+336.6   gates_per_mHa=+1.55   depth_per_mHa=+0.06   COSTS 1.5 gates per mHa recovered
+  N2 identity     d_err=-7.60 mHa   d_2Q=-880.8   gates_per_mHa=-115.89   depth_per_mHa=-189.34   CLEAN (resources fell)
+  Cr2 identity    d_err=-38.84 mHa   d_2Q=-2823.4   gates_per_mHa=-72.69   depth_per_mHa=-129.34   CLEAN (resources fell)
+
+##############################################################################
+# ORIGINAL REPORT (A1-A4, V1-V4, first headline) -- kept below
+##############################################################################
+
+==============================================================================
 TRANSPILATION AUDIT
 ==============================================================================
 Heavy-hex CouplingMap(distance=5): 57 qubits, 128 edges

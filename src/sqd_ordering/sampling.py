@@ -14,19 +14,32 @@ def hf_bitstring(norb, nocc):
     return "0" * (norb - nocc) + "1" * nocc      # rightmost bit = orbital 1
 
 
-def sample_bitstrings(op, norb, nelec, shots, seed, *, seed_transpiler=1234, use_pre_init=True):
-    """Fresh AerSimulator per call. Returns (alpha_counts, beta_counts)."""
-    import ffsim
+def build_circuit(op, norb, nelec):
+    """HF state prep + masked LUCJ operator + measure_all, untranspiled.
+    The single circuit-construction path used everywhere in this project --
+    by sample_bitstrings below, and (imported directly) by
+    experiments/transpilation_audit.py, so an audit of transpiled resource
+    cost is guaranteed to be transpiling the exact circuit the sampling
+    pipeline runs, not a separately-built lookalike.
+    """
     import ffsim.qiskit as fq
-    from qiskit import QuantumCircuit, QuantumRegister, transpile
-    from qiskit_aer import AerSimulator
+    from qiskit import QuantumCircuit, QuantumRegister
 
     qr = QuantumRegister(2 * norb, "q")
     qc = QuantumCircuit(qr)
     qc.append(fq.PrepareHartreeFockJW(norb, nelec), qr)
     qc.append(fq.UCJOpSpinBalancedJW(op), qr)
     qc.measure_all()
+    return qc
 
+
+def sample_bitstrings(op, norb, nelec, shots, seed, *, seed_transpiler=1234, use_pre_init=True):
+    """Fresh AerSimulator per call. Returns (alpha_counts, beta_counts)."""
+    import ffsim.qiskit as fq
+    from qiskit import transpile
+    from qiskit_aer import AerSimulator
+
+    qc = build_circuit(op, norb, nelec)
     sim = AerSimulator(seed_simulator=seed)
     tkw = dict(seed_transpiler=seed_transpiler, optimization_level=1)
     if use_pre_init:

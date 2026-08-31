@@ -22,6 +22,7 @@ order below; later experiments build on earlier ones' cached data.
 | [tm_transfer](outputs/tm_transfer/README.md) | `tm_transfer.py`, `tm_transfer_analysis.py` | Does everything survive a transfer to a localised transition-metal active space (Cr2)? |
 | [chain_aware_v2](outputs/chain_aware_v2/README.md) | `chain_aware_v2.py` | Can a score that targets capture directly (not variational energy) beat S0? |
 | [transpilation_audit](outputs/transpilation_audit/README.md) | `transpilation_audit.py` | Are the fixed-resource comparisons actually resource-neutral on real heavy-hex hardware? |
+| [chain_aware_v3](outputs/chain_aware_v3/README.md) | `chain_aware_v3.py` | Tie-break, interface score, and shortlist-recall reframing -- does anything beat S0 chain-by-chain? |
 
 `figures.py` generates the publication figure set in `results/figures/`
 from several of the CSVs above; it is not its own experiment.

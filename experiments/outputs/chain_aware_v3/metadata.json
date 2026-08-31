@@ -1,0 +1,103 @@
+{
+  "part": "chain_aware_v3",
+  "git_commit": "bfa2a3e90f73dcc7a62f8d43e915f2a15ce7efbc",
+  "dev_chains": [
+    [
+      "H10",
+      "identity"
+    ],
+    [
+      "H10",
+      "physical"
+    ],
+    [
+      "H10",
+      "rand007"
+    ],
+    [
+      "N2",
+      "identity"
+    ],
+    [
+      "N2",
+      "reverse"
+    ],
+    [
+      "N2",
+      "r039"
+    ]
+  ],
+  "heldout_chains": [
+    [
+      "H10",
+      "newchain00"
+    ],
+    [
+      "H10",
+      "newchain01"
+    ],
+    [
+      "H10",
+      "newchain02"
+    ],
+    [
+      "H10",
+      "newchain03"
+    ],
+    [
+      "H10",
+      "newchain04"
+    ],
+    [
+      "H10",
+      "newchain05"
+    ],
+    [
+      "H10",
+      "newchain06"
+    ],
+    [
+      "H10",
+      "newchain07"
+    ],
+    [
+      "H10",
+      "newchain08"
+    ],
+    [
+      "H10",
+      "newchain09"
+    ],
+    [
+      "H10",
+      "newchain10"
+    ],
+    [
+      "H10",
+      "newchain11"
+    ]
+  ],
+  "tie_tol": 1e-10,
+  "k_grid": [
+    1,
+    3,
+    5,
+    10
+  ],
+  "preflight_sint_pass": true,
+  "preflight_combined_pass": true,
+  "p0_n_ties": 16,
+  "p0_n_changed": 3,
+  "p0_n_worse": 2,
+  "p0_newchain11_regret_before": 1.1524966291503487,
+  "p0_newchain11_regret_after": 0.08833532596757569,
+  "acceptance": {
+    "invariance": true,
+    "correct_sign_captured": true,
+    "median_regret_better": "False",
+    "p90_regret_better": "False",
+    "no_worse_than_random": false,
+    "all_pass": "False"
+  },
+  "generated": "2026-08-31T09:35:23"
+}

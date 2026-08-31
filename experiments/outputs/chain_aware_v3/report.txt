@@ -1,0 +1,160 @@
+
+==============================================================================
+CHAIN-AWARE ANCHOR SELECTION -- ROUND 3
+==============================================================================
+STATISTICAL CONSTRAINT: 6 dev chains, 12 held-out chains, evaluated once at the end.
+Dev chains: [('H10', 'identity'), ('H10', 'physical'), ('H10', 'rand007'), ('N2', 'identity'), ('N2', 'reverse'), ('N2', 'r039')]
+Held-out chains: [('H10', 'newchain00'), ('H10', 'newchain01'), ('H10', 'newchain02'), ('H10', 'newchain03'), ('H10', 'newchain04'), ('H10', 'newchain05'), ('H10', 'newchain06'), ('H10', 'newchain07'), ('H10', 'newchain08'), ('H10', 'newchain09'), ('H10', 'newchain10'), ('H10', 'newchain11')]
+
+==============================================================================
+INVARIANCE PRE-FLIGHT: S_int
+==============================================================================
+  triple (0, 1, 9): identity=45.364943  physical=14.018196  newchain00=31.804394  newchain11=19.230948   CHANGES across chains
+  triple (0, 8, 9): identity=45.364943  physical=15.623011  newchain00=19.096995  newchain11=32.858858   CHANGES across chains
+  triple (0, 1, 2): identity=32.832933  physical=14.913947  newchain00=18.375424  newchain11=20.453743   CHANGES across chains
+  triple (5, 6, 7): identity=2.389101  physical=1.160452  newchain00=1.970858  newchain11=0.796285   CHANGES across chains
+
+S_int PRE-FLIGHT VERDICT: PASS (at least one tested triple changes value across chains -- chain-aware, proceed)
+
+==============================================================================
+INVARIANCE PRE-FLIGHT: S0_plus_Sint
+==============================================================================
+  triple (0, 1, 9): identity=57.516524  physical=26.169777  newchain00=43.955976  newchain11=31.382530   CHANGES across chains
+  triple (0, 8, 9): identity=57.516524  physical=27.774593  newchain00=31.248577  newchain11=45.010439   CHANGES across chains
+  triple (0, 1, 2): identity=41.439590  physical=23.520604  newchain00=26.982080  newchain11=29.060400   CHANGES across chains
+  triple (5, 6, 7): identity=3.761440  physical=2.532791  newchain00=3.343197  newchain11=2.168624   CHANGES across chains
+
+S0_plus_Sint PRE-FLIGHT VERDICT: PASS (at least one tested triple changes value across chains -- chain-aware, proceed)
+
+==============================================================================
+Scoring S0, S_int, S0+S_int (per-chain unit-variance normalised) at all 18 chains
+==============================================================================
+
+==============================================================================
+P0 -- CHAIN-AWARE TIE-BREAK ON S0 (S_int breaks ties, zero new parameters)
+==============================================================================
+system      chain  n_tied_at_top pick_before  err_before  regret_before pick_after  err_after  regret_after  changed  worse
+   H10   identity              2   (0, 1, 9)  247.278583       0.217079  (0, 1, 9) 247.278583      0.217079    False  False
+   H10   physical              1   (0, 1, 9)  219.904926       0.696194  (0, 1, 9) 219.904926      0.696194    False  False
+   H10    rand007              1   (0, 1, 9)  218.653814       0.513019  (0, 1, 9) 218.653814      0.513019    False  False
+    N2   identity              2   (0, 1, 9)   24.267039       0.000000  (0, 1, 9)  24.267039      0.000000    False  False
+    N2    reverse              2   (0, 1, 9)   24.267039       0.000000  (0, 1, 9)  24.267039      0.000000    False  False
+    N2       r039              2   (0, 1, 9)   31.307074       0.000000  (0, 1, 9)  31.307074      0.000000    False  False
+   H10 newchain00              2   (0, 1, 9)  176.021861       0.055171  (0, 1, 9) 176.021861      0.055171    False  False
+   H10 newchain01              2   (0, 1, 9)  176.235370       0.000000  (0, 8, 9) 270.214154      0.867402     True   True
+   H10 newchain02              2   (0, 1, 9)  219.114686       0.460093  (0, 1, 9) 219.114686      0.460093    False  False
+   H10 newchain03              2   (0, 1, 9)  220.306536       0.752488  (0, 1, 9) 220.306536      0.752488    False  False
+   H10 newchain04              2   (0, 1, 9)  261.275158       0.000000  (0, 1, 9) 261.275158      0.000000    False  False
+   H10 newchain05              2   (0, 1, 9)  220.216024       0.484941  (0, 1, 9) 220.216024      0.484941    False  False
+   H10 newchain06              2   (0, 1, 9)  219.017568       0.541402  (0, 1, 9) 219.017568      0.541402    False  False
+   H10 newchain07              2   (0, 1, 9)  219.114686       0.538676  (0, 1, 9) 219.114686      0.538676    False  False
+   H10 newchain08              2   (0, 1, 9)  221.904279       0.472594  (0, 1, 9) 221.904279      0.472594    False  False
+   H10 newchain09              2   (0, 1, 9)  227.600651       0.148377  (0, 1, 9) 227.600651      0.148377    False  False
+   H10 newchain10              2   (0, 1, 9)  256.199690       0.234481  (0, 8, 9) 256.307393      0.235249     True   True
+   H10 newchain11              2   (0, 1, 9)  222.433917       1.152497  (0, 8, 9) 175.542126      0.088335     True  False
+
+Chains with an S0 tie at the top: 16/18
+Chains where the tie-break changed the pick: 3/18
+Chains made WORSE by the tie-break: 2/18
+Median regret before: 0.347  after: 0.348
+Worst regret before: 1.152  after: 0.867
+newchain11: regret before=1.152  after=0.088  below 1.0? YES
+
+==============================================================================
+P2 -- SHORTLIST RECALL AND BEST-OF-TOP-k REGRET
+==============================================================================
+
+==============================================================================
+P2 results -- DEVELOPMENT (6 chains)
+==============================================================================
+
+S0:
+  k=1   top1_acc=0.333  recall=0.333  median_regret=0.109  p90_regret=0.109  worst_regret=0.696
+  k=3   top1_acc=0.333  recall=0.333  median_regret=0.066  p90_regret=0.066  worst_regret=0.696
+  k=5   top1_acc=0.333  recall=0.333  median_regret=0.061  p90_regret=0.061  worst_regret=0.169
+  k=10  top1_acc=0.333  recall=0.500  median_regret=0.061  p90_regret=0.061  worst_regret=0.169
+  fraction beating default anchors (best-of-top-5): 1.000 (6/6)
+
+S_int:
+  k=1   top1_acc=0.167  recall=0.167  median_regret=0.145  p90_regret=0.145  worst_regret=0.513
+  k=3   top1_acc=0.167  recall=0.333  median_regret=0.061  p90_regret=0.061  worst_regret=0.503
+  k=5   top1_acc=0.167  recall=0.333  median_regret=0.061  p90_regret=0.061  worst_regret=0.169
+  k=10  top1_acc=0.167  recall=0.500  median_regret=0.000  p90_regret=0.000  worst_regret=0.135
+  fraction beating default anchors (best-of-top-5): 1.000 (6/6)
+
+S0_plus_Sint:
+  k=1   top1_acc=0.333  recall=0.333  median_regret=0.083  p90_regret=0.083  worst_regret=0.513
+  k=3   top1_acc=0.333  recall=0.333  median_regret=0.061  p90_regret=0.061  worst_regret=0.503
+  k=5   top1_acc=0.333  recall=0.333  median_regret=0.061  p90_regret=0.061  worst_regret=0.169
+  k=10  top1_acc=0.333  recall=0.667  median_regret=0.000  p90_regret=0.000  worst_regret=0.135
+  fraction beating default anchors (best-of-top-5): 1.000 (6/6)
+
+__random__:
+  k=1   top1_acc=0.020  recall=0.020  median_regret=0.700  p90_regret=2.287  worst_regret=1.066
+  k=3   top1_acc=0.019  recall=0.056  median_regret=0.360  p90_regret=0.836  worst_regret=0.677
+  k=5   top1_acc=0.022  recall=0.101  median_regret=0.170  p90_regret=0.594  worst_regret=0.435
+  k=10  top1_acc=0.018  recall=0.191  median_regret=0.126  p90_regret=0.360  worst_regret=0.169
+
+==============================================================================
+P2 results -- HELD-OUT (12 chains)
+==============================================================================
+
+S0:
+  k=1   top1_acc=0.167  recall=0.167  median_regret=0.383  p90_regret=0.383  worst_regret=1.622
+  k=3   top1_acc=0.167  recall=0.500  median_regret=0.008  p90_regret=0.008  worst_regret=0.417
+  k=5   top1_acc=0.167  recall=0.500  median_regret=0.002  p90_regret=0.002  worst_regret=0.092
+  k=10  top1_acc=0.167  recall=0.667  median_regret=0.000  p90_regret=0.000  worst_regret=0.088
+  fraction beating default anchors (best-of-top-5): 0.917 (11/12)
+
+S_int:
+  k=1   top1_acc=0.083  recall=0.083  median_regret=0.394  p90_regret=0.394  worst_regret=0.867
+  k=3   top1_acc=0.083  recall=0.333  median_regret=0.042  p90_regret=0.042  worst_regret=0.460
+  k=5   top1_acc=0.083  recall=0.333  median_regret=0.036  p90_regret=0.036  worst_regret=0.460
+  k=10  top1_acc=0.083  recall=0.500  median_regret=0.002  p90_regret=0.002  worst_regret=0.417
+  fraction beating default anchors (best-of-top-5): 0.833 (10/12)
+
+S0_plus_Sint:
+  k=1   top1_acc=0.000  recall=0.000  median_regret=0.479  p90_regret=0.479  worst_regret=0.867
+  k=3   top1_acc=0.000  recall=0.333  median_regret=0.027  p90_regret=0.027  worst_regret=0.417
+  k=5   top1_acc=0.000  recall=0.500  median_regret=0.008  p90_regret=0.008  worst_regret=0.417
+  k=10  top1_acc=0.000  recall=0.583  median_regret=0.000  p90_regret=0.000  worst_regret=0.055
+  fraction beating default anchors (best-of-top-5): 0.917 (11/12)
+
+__random__:
+  k=1   top1_acc=0.022  recall=0.022  median_regret=0.941  p90_regret=1.760  worst_regret=1.235
+  k=3   top1_acc=0.024  recall=0.071  median_regret=0.382  p90_regret=0.954  worst_regret=0.648
+  k=5   top1_acc=0.023  recall=0.118  median_regret=0.181  p90_regret=0.621  worst_regret=0.479
+  k=10  top1_acc=0.022  recall=0.229  median_regret=0.088  p90_regret=0.371  worst_regret=0.417
+
+==============================================================================
+ACCEPTANCE CRITERIA
+==============================================================================
+1. Invariance pre-flight PASS: True
+2. Correct-sign rho(S_int, captured) at every held-out chain: True
+     chain      rho            p  correct_sign
+newchain00 0.719296 5.505433e-08          True
+newchain01 0.524655 3.042410e-04          True
+newchain02 0.568979 6.856269e-05          True
+newchain03 0.511935 4.497146e-04          True
+newchain04 0.655862 1.805466e-06          True
+newchain05 0.606541 1.622958e-05          True
+newchain06 0.363279 1.664633e-02          True
+newchain07 0.472436 1.379947e-03          True
+newchain08 0.499283 6.536092e-04          True
+newchain09 0.443647 2.883978e-03          True
+newchain10 0.666629 1.058959e-06          True
+newchain11 0.589359 3.207935e-05          True
+3. Best-of-top-5 regret (held-out): S0 median=0.002, S_int median=0.036 (below S0? False)
+   S0 p90=0.002, S_int p90=0.036 (below S0? False)
+4. No held-out chain worse than random (S_int best-of-top-5 regret <= random): False
+
+ALL ACCEPTANCE CRITERIA MET: False
+
+==============================================================================
+HEADLINE
+==============================================================================
+1. Tie-break repairs newchain11 without harming any other chain: newchain11 regret 1.152 -> 0.088 (below 1.0); 2/18 chains made worse overall.
+2. S_int passes the invariance pre-flight: True.
+3. Best-of-top-5 regret (held-out, median / p90): S0 0.002/0.002  S_int 0.036/0.036  S0+S_int 0.008/0.008
+4. Top-5 recall: dev {'S0': np.float64(0.3333333333333333), 'S_int': np.float64(0.3333333333333333), 'S0_plus_Sint': np.float64(0.3333333333333333)}  held-out {'S0': np.float64(0.5), 'S_int': np.float64(0.3333333333333333), 'S0_plus_Sint': np.float64(0.5)}
+5. Does any candidate beat S0 on the declared acceptance criteria: NO

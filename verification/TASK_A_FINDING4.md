@@ -202,3 +202,75 @@ data.
 Raw data and scripts: `task_a1_marginal_dump.py`,
 `task_a3_h10_perturbation.py` (+ `_results.csv`),
 `task_a4_n2_perturbation.py` (+ `_results.csv`), `task_a5_shot_sweep.py`.
+
+## Amendment 3 — thread-related or irreducible? Neither, precisely
+
+Built the H10 R=1.6 reference from scratch 5 times with
+`OMP_NUM_THREADS=MKL_NUM_THREADS=OPENBLAS_NUM_THREADS=1`, and 5 more times
+with those unset, each as a genuinely separate `python3` subprocess (not a
+loop in one process) with a fresh, unique cache directory so every run is a
+real independent build. Result:
+
+**Both groups are bit-for-bit identical, in every one of the 10 runs, and
+identical to the shipped `cache/h10_R1.6/reference.npz` too** — `t1L`/`t2L`
+max absolute difference `0.000e+00` across all 10, `E_CASCI` the same to
+every printed digit (`-4.966071088325821`) in all 10 runs plus the cached
+file. Thread pinning makes no detectable difference either way, in this
+environment, today.
+
+**This does not mean the noise vanished — it means the real variable is
+which conda environment does the building, not thread count.** All 10 of
+the runs above used the `sqd` conda environment — the same one that
+originally produced the shipped cache. Repeating the identical build in a
+*different*, independently-solved environment reproduces Finding 4's
+original discrepancy exactly:
+
+```
+$ conda activate sqd-orbital-ordering   # a different env, built today from
+                                          # the now-fixed environment.yml
+$ python3 -c "... build_or_load_h10_reference(...) ..."
+t1L: max abs diff = 2.371e-13   max rel diff = 1.217e-11
+t2L: max abs diff = 4.425e-12   max rel diff = 1.737e-09
+```
+
+— the same order of magnitude as the original cold-start finding, even
+though `pip show` reports **identical** `pyscf`/`numpy`/`scipy` version
+numbers (2.10.0 / 2.5.2 / 1.18.0) in both environments. The actual
+difference is one level down, in `conda list`:
+
+| package | `sqd` (built the shipped cache) | `sqd-orbital-ordering` (fresh, today) |
+|---|---|---|
+| `libblas` | 3.11.0 **build 9**\_h51639a9\_openblas | 3.11.0 **build 10**\_h51639a9\_openblas |
+| `liblapack` | 3.11.0 **build 9**\_hd9741b5\_openblas | 3.11.0 **build 10**\_hd9741b5\_openblas |
+| `numpy` | 2.5.2 build `py312ha003a3f_0` | 2.5.2 build `py312hff34920_1` |
+
+Same nominal versions, different conda **builds** of the underlying
+BLAS/LAPACK — exactly the kind of low-level numerical-library difference
+(different SIMD dispatch or summation order inside GEMM/dot-product
+kernels) that shifts iteratively-converged CCSD amplitudes at the 1e-10 to
+1e-13 level without touching the aggregate energy at anything above 1e-14,
+which is a well-understood, standard phenomenon in numerical computing —
+not a race condition.
+
+**Answer to your question, precisely: the noise is deterministic and fully
+reproducible *within* one fixed environment regardless of thread pinning
+(so the existing OMP/MKL/OPENBLAS=1 protocol is not what's failing here),
+but is not reproducible *across* independently-resolved environments, even
+ones that satisfy `environment.yml` and report matching top-level package
+versions.** `environment.yml` pins no package versions at all (not even
+after Task B's fixes), so two separate `conda env create` runs — today vs.
+whenever the shipped cache was built, or on two different machines — are
+not guaranteed to solve to the same BLAS build. Practically this has the
+same implication as your "irreducible" branch (shipping/caching the
+reference is the only real mitigation; thread pinning alone does not
+guarantee bit-reproducibility of freshly-built references), but for a
+different and more specific reason: it's an **environment/BLAS-build
+reproducibility gap**, not process-launch randomness, and it is in
+principle fixable by pinning exact package builds (e.g. a `conda-lock`
+file or exact-version pins in `environment.yml`) rather than by anything
+involving threads.
+
+Script: `task_amendment3_thread_determinism.py` (per-run worker) — the
+driver that invoked it as 10 separate subprocesses was scratch shell script,
+not committed; the worker plus this write-up are enough to reproduce the
+comparison.

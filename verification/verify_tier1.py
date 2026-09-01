@@ -229,7 +229,13 @@ C.check("sha256_no_mismatches", n_sha_mismatch == 0,
         f"not a mismatch)")
 
 # ------------------------------------------------------------ retained_J vs stored
-h10_results = pd.read_csv(REPO_ROOT / "experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv")
+# dtype=str on the permutation column: read as int64 (pandas' default), the
+# identity permutation "0123456789" silently loses its leading zero via
+# int64 conversion (123456789, 9 digits) -- identity is the ONLY permutation
+# string starting with "0", so this bug affects identity alone. Cost me a
+# false "data problem" diagnosis on the first pass; the data was always right.
+h10_results = pd.read_csv(REPO_ROOT / "experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv",
+                           dtype={"permutation": str})
 h10_by_ord = h10_results.drop_duplicates("ordering").set_index("ordering")
 retj_mismatches = []
 sample_orderings = ["identity", "reverse", "physical", "physical_reverse",
@@ -237,7 +243,7 @@ sample_orderings = ["identity", "reverse", "physical", "physical_reverse",
 for name in sample_orderings:
     if name not in h10_by_ord.index:
         continue
-    perm = [int(c) for c in str(h10_by_ord.loc[name, "permutation"])]
+    perm = [int(c) for c in h10_by_ord.loc[name, "permutation"]]
     # positions_from(perm, "layout") = argsort(perm) -- pos[orbital] = its
     # layout position. Confirmed by reading scripts/run_ordering_pipeline.py's
     # definition (not imported); single argsort, not double.

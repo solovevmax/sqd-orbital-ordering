@@ -80,7 +80,7 @@ puts the manifest above your ~120-180 estimate (242 total).
 
 ## 3. Tier 1 — re-derived from cached references
 
-**6/7 checks passed.** `verification/verify_tier1.py`. Rebuilds the LUCJ
+**7/7 checks passed.** `verification/verify_tier1.py`. Rebuilds the LUCJ
 operator from `cache/h10_R1.6`'s raw `t1`/`t2` via `ffsim` directly (an
 external dependency, not this project's own analysis code); the mask
 application and S0/retained_J formulas are independent reimplementations,
@@ -93,16 +93,58 @@ than imported.
 - S0 recomputed vs. stored, all 120 H10-identity triples: **120/120 exact.**
 - Captured weight recomputed from the cached CASCI vector against 20 sampled
   (chain, triple) determinant-file pairs: **20/20 exact.**
+- **`retained_J` recomputed vs. stored, all 8 sampled layouts including
+  identity: 8/8 exact** (see resolution below — this was a false alarm from
+  my own checker, now fixed).
 - SHA-256 audit, all 12 `metadata.json` files with hash fields: 25 hashes
   resolved and matched, **0 mismatched**, 1 unresolved (N2's `fcidump_sha256`
   in `n2_anchor_axis/metadata.json` — no candidate file under any tried path
   reproduced it; not a mismatch, just not located).
 
-### The one failure
+### retained_J at identity — resolved, the report's number was right all along
 
-| Claim | Claimed | Recomputed | Diff | Source | Verdict |
-|---|---|---|---|---|---|
-| `retained_J` (identity chain only) | 0.2442 | 0.2043 | −0.0399 (16%) | `experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv` | **Unresolved, low priority.** 7/8 sampled layouts (reverse, physical, physical_reverse, 4 random) match to 1e-3 after fixing a bug in my own check (`positions_from` is a single `argsort`, confirmed by reading the source). Only identity itself — the simplest possible layout — still mismatches, for a reason not identified. `retained_J` is a diagnostic column; S0 and captured weight, which the report's actual shortlist rule depends on, are both exact. Flagged rather than chased further given time budget. |
+The first pass reported a 16% mismatch at the identity chain specifically,
+flagged as unresolved and low priority. You asked me to resolve it rather
+than let it stand, since identity is the most-quoted layout in the report.
+It resolves cleanly, and the report needs no correction here.
+
+**Stored:** 0.24419999627885725. **First-pass recomputed:** 0.20427902...
+**Absolute diff:** −0.0399. **Relative diff:** −16.3%.
+
+Checked your three candidates in order:
+
+1. **Different normalisation path for identity?** No — same formula, same
+   code path as every other layout (`retained_J_of` delegates to
+   `mask.retained_J` unconditionally; nothing branches on which ordering is
+   passed).
+2. **Same-spin diagonal included in one but not the other?** This was the
+   right kind of suspicion but tested false: recomputing identity **with**
+   the diagonal gives exactly the stored value (0.24419999627885725, exact
+   to every printed digit); **without** it gives 0.14462899455389377 — a
+   third, different number, matching neither the stored value nor my
+   first-pass result. So the stored value already reflects the correct,
+   diagonal-included mask.
+3. **Stored value predates the 25 Aug diagonal fix?** No — checked
+   directly: the fix landed as commit `b84ff9f` on **2026-08-24 09:33**
+   (the report's own "25 August" is off by a day), and
+   `h10_baseline_R1.6/metadata.json` records `git_commit: 0458ec5...`,
+   generated `2026-08-24T12:13:09` — three hours *after* the fix, and
+   `git merge-base --is-ancestor b84ff9f 0458ec5` confirms the fix commit
+   is a direct ancestor. The data postdates the fix by construction, not
+   by luck.
+
+**Actual cause: a bug in my own checker, not the report or the data.**
+`pd.read_csv` with no explicit dtype infers the `permutation` column as
+`int64`. Identity's permutation string is `"0123456789"` — the *only* one
+of the 58 layouts in this file that starts with `0`. As an int64 it becomes
+`123456789` (9 digits, leading zero silently dropped), and building the
+position array from that truncated string dropped orbital 0 from the
+chain entirely. Every other sampled layout's permutation string starts
+with a nonzero digit, so int64 round-tripping preserved all 10 digits and
+those checks happened to pass on the first try — coincidentally validating
+the *formula* while masking a parsing bug that only identity could expose.
+Fixed with `dtype={"permutation": str}` on the read; 8/8 now match exactly,
+identity included.
 
 ## 4. Tier 2 — re-sampling spot-check
 

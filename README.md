@@ -103,29 +103,33 @@ low rank the ansatz collapses toward Hartree–Fock, giving 160 mHa error on H10
 where full rank gives 1.2 mHa. The compressed-factorisation optimiser is
 disabled — it worsens energies and introduces nondeterminism.
 
-**Reproducibility.** Reference data (RHF, CCSD, CASCI, FCIDUMP) is computed
-once and cached, with OMP/MKL/OpenBLAS pinned to one thread. Recomputing
-across processes produced FCIDUMPs differing enough to shift energies by
-8–17 mHa, because determinant selection at tight budgets is near-degenerate.
+**Reproducibility.** SQD subspace energies at tight determinant budgets are
+bit-reproducible **against the shipped cached reference data** (verified:
+17/17 exact in `verification/`'s Tier 2, including Cr2 to `diff=0.0`). They
+are **not** reproducible from an independently reconstructed reference —
+even under exact BLAS-build pinning and thread pinning: H10 differs by 73
+mHa, N2 by 7.3 mHa, from the same cached-vs-rebuilt comparison. The cause is
+CCSD amplitude tensor elements varying at the ~1e-10 relative level between
+independent builds, which the aggregate correlation energy conceals by
+agreeing to ~1e-14. The size of the effect tracks the selection-boundary
+marginal ratio $w_{16}/w_{15}$: 0.989 for H10 (large effect), 0.504 for N2
+(smaller, still nonzero). **Practical consequence: the reference artefacts
+must be distributed with the results — an environment specification alone
+is not sufficient**, and re-pinning threads (OMP/MKL/OpenBLAS to one) does
+not fix it either.
+
 `environment.yml` is for general use; `environment.lock.txt` (+
-`environment.lock-pip.txt`) pins the exact package builds — including the
-BLAS/LAPACK build specifically — used to generate every cached reference in
-this repository, since two environments satisfying `environment.yml` with
-matching version numbers were found to disagree at the ~1e-10 relative
-level in CCSD amplitude tensor elements (`libblas`/`liblapack` build 9 vs.
-10 of the same nominal version). **The lockfile closes that specific gap
-but has not been shown sufficient on its own**: rebuilding from the
-lockfile in a fresh environment reproduced the cached H10 R=1.6 reference
-bit-for-bit once, but repeat rebuilds — including in the original
-environment that produced the cache — later gave a different, though
-internally self-consistent, result, with the environment's package state
-provably unchanged throughout. The mechanism for that second effect is not
-established; see `verification/FIX1_LOCKFILE_VERIFICATION.md` and
-`verification/TASK_A_FINDING4.md` for the full account. Treat any
-individually-quoted per-layout number at a near-degenerate configuration
-(anywhere the selection-boundary marginal ratio is close to 1) as
-reproducible from the *shipped* cached reference, not from a from-scratch
-rebuild, lockfile or not.
+`environment.lock-pip.txt`) pins the exact package builds that produced
+every cached reference in this repository — including the specific
+`libblas`/`liblapack` build (two environments satisfying `environment.yml`
+with matching version numbers were found to disagree at the ~1e-10 level,
+tracing to build 9 vs. 10 of the same nominal BLAS version). **Treat the
+lockfile as a mitigation that narrows the spread, not a guarantee**: it
+reproduced the cached H10 reference bit-for-bit once, but repeat rebuilds —
+including in the original environment that produced the cache, package
+state provably unchanged — later gave a different, self-consistent result.
+Full account in `verification/FIX1_LOCKFILE_VERIFICATION.md` and
+`verification/TASK_A_FINDING4.md`.
 
 ---
 

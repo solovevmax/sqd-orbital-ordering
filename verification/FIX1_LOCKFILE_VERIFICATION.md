@@ -1,8 +1,12 @@
 # FIX 1 verification: does the lockfile close the reproduction gap?
 
-**Short answer: partially, and not as cleanly as the first test suggested.
-I need to report this honestly rather than presenting the one clean result
-as the headline.**
+**Short answer: no. It mitigates one identified component (the
+libblas/liblapack build mismatch) but does not close the
+reference-reconstruction gap.** This was confirmed a second, independent
+way during Tier 2: N2 rebuilt from the lockfile environment still misses
+the cached reference by 7.3 mHa (see `REPORT.md` section 4). Do not read
+the lockfile as a guarantee — it's a mitigation. See `REPORT.md`'s opening
+paragraph for the corrected headline framing.
 
 ## What was done
 

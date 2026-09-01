@@ -1784,3 +1784,17 @@
   computation: "H10 fresh-reference err_mHa is bit-identical (373.611432) at 2e6, 8e6 and 32e6 shots"
   tolerance: exact_bit
   tier: 2
+- id: finding4_h10_lockfile_rebuild
+  value: 373.318132
+  units: mHa
+  source: verification/FIX1_LOCKFILE_VERIFICATION.md
+  computation: "H10 identity/default, reference rebuilt from the environment.lock.txt-pinned environment (sqd-lockfile-verify/-clean), one representative run of the >10 attempted -- NOT reproducible to the cached 300.31919403956664 mHa despite exact BLAS-build pinning"
+  tolerance: rebuilt_reference
+  tier: 2
+- id: finding4_n2_lockfile_rebuild
+  value: 39.207351816230585
+  units: mHa
+  source: verification/REPORT.md
+  computation: "N2 identity/default, reference rebuilt from the environment.lock.txt-pinned environment (outputs/unified/reference.pkl backed up, moved aside to force a genuine rebuild, restored and md5-verified after) -- NOT reproducible to the cached 31.870454303643218 mHa; a smaller (7.3 mHa) but real gap than H10's, consistent with N2's more comfortable w16/w15 ratio"
+  tolerance: rebuilt_reference
+  tier: 2

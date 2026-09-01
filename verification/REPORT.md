@@ -7,25 +7,42 @@ Presentation.pptx`, cross-checked against each other, then verified against
 raw data at four tiers (independent recomputation, cached-reference
 re-derivation, live re-sampling, and a cold start from a fresh clone).
 
-**If you read nothing else, read Finding 4** (`TASK_A_FINDING4.md`) and the
-Verification section this report closes with.
+**If you read nothing else, read this paragraph.**
+
+> SQD subspace energies at tight determinant budgets are bit-reproducible
+> against **shipped** reference data (Tier 2: 17/17 exact, including Cr2 at
+> `diff = 0.0`). They are **not** reproducible from independently
+> reconstructed references, even under exact BLAS-build pinning and thread
+> pinning: H10 differs by 73 mHa and N2 by 7.3 mHa. The cause is
+> element-wise CCSD amplitude variation at the 1e-10 level, which the
+> aggregate correlation energy conceals by agreeing to 1e-14. The
+> magnitude tracks the boundary ratio $w_{16}/w_{15}$: 0.989 for H10, 0.504
+> for N2. **Practical consequence: reference artefacts must be distributed
+> with the results. Environment specification alone is insufficient** —
+> the conda lockfile added during this audit (`environment.lock.txt`)
+> narrows the spread and is good practice, but it is a mitigation, not a
+> guarantee, and should not be read as one.
+
+Full derivation of this in `TASK_A_FINDING4.md` (the characterisation) and
+`FIX1_LOCKFILE_VERIFICATION.md` (why the lockfile doesn't fully close it).
 
 ---
 
 ## 1. Claims manifest
 
-240 claims extracted from the `.tex` (systematic grep pass over every
+242 claims extracted from the `.tex` (systematic grep pass over every
 numeric literal, filtered to claims vs. prose/section-reference noise), plus
-6 claims added per your Amendments 1/2 during the audit. Table-row cells
-are individually listed (err/percentile/captured/retained_J each its own
-claim) rather than aggregated per row — a deliberate granularity choice, not
-scope creep; it puts the manifest above your ~120-180 estimate (240 total).
+8 claims added per your Amendments 1/2 and the two lockfile-rebuild results
+during the audit. Table-row cells are individually listed
+(err/percentile/captured/retained_J each its own claim) rather than
+aggregated per row — a deliberate granularity choice, not scope creep; it
+puts the manifest above your ~120-180 estimate (242 total).
 
 | Tier | Count | Meaning |
 |---|---|---|
 | 0 | 188 | Statistic recomputed independently from a raw per-evaluation CSV |
 | 1 | 21 | Re-derived from a cached `.npz`/reference, independent formula |
-| 2 | 12 | Re-sampled live against the shipped cached reference |
+| 2 | 14 | Re-sampled live (12 against the shipped reference, 2 against an independently rebuilt one) |
 | 3 | 19 | Narrative / one-off / no corresponding raw CSV found |
 
 | Tolerance class | Count |
@@ -34,7 +51,7 @@ scope creep; it puts the manifest above your ~120-180 estimate (240 total).
 | count (exact) | 50 |
 | resampled_energy_mha (fixed seed+shots, shipped reference) | 46 |
 | correlation (Spearman/Pearson + p) | 36 |
-| rebuilt_reference (Finding-4-affected; no fixed tolerance) | 13 |
+| rebuilt_reference (Finding-4-affected; no fixed tolerance — the observed spread from Task A/Tier 2 is the record, not a pass/fail epsilon) | 15 |
 | exact_energy_ha | 8 |
 | exact_bit | 6 |
 
@@ -174,17 +191,18 @@ relative between independent builds (not the 1e-14 the aggregate energy
 agreement suggests), and this is not resolved by more shots (16x range
 tested, no effect).
 
-**FIX 1 (conda lockfile) closes part of the gap, not all of it.** A
+**FIX 1 (conda lockfile) is a mitigation, not a fix.** Do not read it as
+closing the reference-reconstruction gap — it doesn't, and the evidence
+against that reading is direct: N2, rebuilt from the lockfile environment,
+still misses the cached reference by 7.3 mHa (39.21 vs. 31.87), and H10's
+one clean lockfile match did not repeat on any subsequent attempt,
+including in the original `sqd` environment itself, package state provably
+unchanged (`conda-meta/history` timestamp predates this session). The
 `libblas`/`liblapack` build mismatch (build 9 vs. 10 of the same nominal
-3.11.0 version) between independently-solved environments fully explains
-one component and is fixed by `environment.lock.txt`
-(`conda list --explicit`, pinning exact builds). But repeat testing found a
-**second, distinct, currently-unexplained source of drift**: the *same*
-`sqd` environment that produced the shipped cache and matched it exactly in
-a 10-run test later gave a different (but internally self-consistent
-8-for-8) result, with its package state provably unchanged throughout
-(`conda-meta/history` timestamp predates this session). Full record in
-`FIX1_LOCKFILE_VERIFICATION.md`.
+3.11.0 version) the lockfile pins against is real and narrows the spread —
+but there is a second, distinct, currently-unexplained source of drift on
+top of it. The only verified guarantee remains: use the shipped cached
+reference. Full record in `FIX1_LOCKFILE_VERIFICATION.md`.
 
 | Cold-start step | Result | Wall time |
 |---|---|---|
@@ -214,16 +232,19 @@ a 10-run test later gave a different (but internally self-consistent
 - **The group benchmark** (`sbd` alone, no Python): reproduces exactly,
   ~2.5 minutes, from a genuinely fresh clone + environment, after the three
   Tier-3 fixes.
-- **Every statistic in Tiers 0/1** (188 + 21 = 209 of 240 claims):
+- **Every statistic in Tiers 0/1** (188 + 21 = 209 of 242 claims):
   reproduces from the cached data shipped in this repository, independently
   recomputed, in well under a minute total (`make verify`).
 - **Individual per-layout SQD energies** (the `resampled_energy_mha` class,
   46 claims): reproduce exactly **from the shipped cached reference**, at
   the cost of the sampling + `sbd` wall time (~30s-16min depending on
-  system size). They do **not**, in general, reproduce from an
-  independently rebuilt reference — even a lockfile-pinned one — at
-  near-degenerate configurations (Finding 4). This is now documented in the
-  README rather than silently assumed.
+  system size). They do **not** reproduce from an independently rebuilt
+  reference, lockfile-pinned or not — confirmed on both systems tested
+  (H10 off by 73 mHa, N2 by 7.3 mHa), worse the closer the configuration
+  sits to a selection-boundary tie ($w_{16}/w_{15}$ near 1) but not zero
+  even for N2's comparatively comfortable 0.504 ratio. This is now
+  documented in the README as the headline reproducibility finding, not a
+  footnote.
 - **19 claims (tier 3)** have no corresponding raw CSV in this repository
   (one-off historical comparisons predating the current experiment
   structure, e.g. the `n_reps=2` vs. `None` error figures, the Fiedler

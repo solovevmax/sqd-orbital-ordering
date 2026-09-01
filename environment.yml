@@ -1,9 +1,12 @@
-name: sqd
+name: sqd-orbital-ordering
 channels:
   - conda-forge
 dependencies:
   - python=3.12
   - pyscf
+  - openmpi
+  - llvm-openmp
+  - compilers
   - pip
   - pip:
       - ffsim

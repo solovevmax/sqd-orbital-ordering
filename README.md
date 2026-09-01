@@ -16,7 +16,7 @@ cheap shortlist rule that reaches 0.2% of optimal on held-out chains.
 ## Reproduce the group benchmark
 
 ```bash
-conda env create -f environment.yml && conda activate sqd
+conda env create -f environment.yml && conda activate sqd-orbital-ordering
 export SBD_BIN=sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
 mpirun -n 1 "$SBD_BIN" \
   --fcidump sbd/data/n2/fcidump.txt \

@@ -32,8 +32,16 @@
 - id: abs_between_within_ratio_n2
   value: 27.2
   units: dimensionless
-  source: outputs/unified/results.csv
-  computation: "5-seed between/within variance ratio, N2 random layouts"
+  source: archive/legacy_outputs/seed_replication_n2_cas610_155.csv
+  computation: "5-seed between/within variance ratio, N2 random layouts -- NOTE: this source file lives in archive/ (filed there this session as superseded, pre-restructuring data); it is the only file found that reproduces this exact figure. outputs/unified/results.csv (2 seeds only) does not."
+  tolerance: statistic
+  tier: 0
+
+- id: abs_kendall_tau_n2
+  value: 0.83
+  units: dimensionless
+  source: archive/legacy_outputs/seed_replication_n2_cas610_155.csv
+  computation: "mean pairwise Kendall tau (ranking stability) across the 5 seeds' orderings"
   tolerance: statistic
   tier: 0
 

@@ -1,0 +1,71 @@
+{
+  "total_shots": 1000000,
+  "unique_bitstrings": 49,
+  "top_bitstrings": [
+    {
+      "bitstring": "000111000111",
+      "count": 994406,
+      "probability": 0.994406
+    },
+    {
+      "bitstring": "011001000111",
+      "count": 817,
+      "probability": 0.000817
+    },
+    {
+      "bitstring": "000111011001",
+      "count": 794,
+      "probability": 0.000794
+    },
+    {
+      "bitstring": "010101000111",
+      "count": 454,
+      "probability": 0.000454
+    },
+    {
+      "bitstring": "000111010101",
+      "count": 443,
+      "probability": 0.000443
+    },
+    {
+      "bitstring": "001011001011",
+      "count": 374,
+      "probability": 0.000374
+    },
+    {
+      "bitstring": "010101010101",
+      "count": 349,
+      "probability": 0.000349
+    },
+    {
+      "bitstring": "001101001101",
+      "count": 306,
+      "probability": 0.000306
+    },
+    {
+      "bitstring": "010011010011",
+      "count": 251,
+      "probability": 0.000251
+    },
+    {
+      "bitstring": "001011000111",
+      "count": 188,
+      "probability": 0.000188
+    }
+  ],
+  "top1_bitstring": "000111000111",
+  "top1_fraction": 0.994406,
+  "particle_number_check": {
+    "pct_total_correct": 100.0,
+    "pct_alpha_correct": 100.0,
+    "pct_beta_correct": 100.0
+  },
+  "norb": 6,
+  "nelec": [
+    3,
+    3
+  ],
+  "source_qpy_path": "outputs/n2_equilibrium_lucj.qpy",
+  "bitstring_file_path": "outputs/n2_equilibrium_bitstrings.txt",
+  "bit_order_mode": "qiskit"
+}

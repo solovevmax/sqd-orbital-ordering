@@ -1,0 +1,17 @@
+CENTERED-MASK QUICK CHECK (3 orderings)
+H10 R=1.6 Å | shots=500000 | seeds=(2026, 7)
+[boys] cq-occ: 5 orbs, unitary 2.0e-15, span 6.7e-16
+[boys] cq-vir: 5 orbs, unitary 2.6e-15, span 5.6e-16
+Traceback (most recent call last):
+  File "/Users/maxim/sqd-project/centered_mask_quickcheck.py", line 143, in <module>
+    main()
+  File "/Users/maxim/sqd-project/centered_mask_quickcheck.py", line 78, in main
+    retained = p.retained_J_of(pos, Jaa, Jab)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/maxim/sqd-project/run_ordering_pipeline.py", line 188, in retained_J_of
+    keep += sum(np.abs(J_ab[:, p, p]).sum() for p in opp_spin_sites(pos))
+                                                     ^^^^^^^^^^^^^^^^^^^
+  File "/Users/maxim/sqd-project/run_ordering_pipeline.py", line 161, in opp_spin_sites
+    assert centroids is not None, "centroids required for centered mask"
+           ^^^^^^^^^^^^^^^^^^^^^
+AssertionError: centroids required for centered mask

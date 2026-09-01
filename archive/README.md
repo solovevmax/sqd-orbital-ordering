@@ -1,9 +1,10 @@
 # Archive
 
 Superseded or one-off work, kept for history. Nothing here is imported by
-the live pipeline (`run_ordering_pipeline.py`, `unified_run.py`,
-`src/sqd_ordering/`, `experiments/*.py`). Moved, not deleted, per the
-project's convention — git history still holds every prior version.
+the live pipeline (`scripts/run_ordering_pipeline.py`,
+`scripts/unified_run.py`, `src/sqd_ordering/`, `experiments/*.py`). Moved,
+not deleted, per the project's convention — git history still holds every
+prior version.
 
 ## Negative result
 
@@ -35,10 +36,12 @@ why that shortcut was ruled out, not merely as dead code.
   pipeline), and the original top-level `stage1.py`/`stage2.py` names
   collided with that unrelated naming — keeping the old names in
   `archive/` risked being read as the same thing.
-- `SQD_workflow.ipynb` — not archived. It has an uncommitted, executed
-  edit from an interactive session (reading
-  `outputs/scaleup_n2_cas610_155.csv`) that looks like in-progress work,
-  not dead code. Left in place; revisit once confirmed unused.
+- `SQD_workflow.ipynb` — the original exploratory driver notebook,
+  superseded by `scripts/run_ordering_pipeline.py` and
+  `scripts/unified_run.py`. Previously left at root pending a final
+  interactive check (reading `outputs/scaleup_n2_cas610_155.csv`); that
+  check is committed (see git history) and the notebook is archived here
+  as a superseded exploratory driver, not maintained further.
 
 ## One-off scratch / exploratory scripts (all dead — not imported anywhere)
 
@@ -103,3 +106,24 @@ of what changed and why.
 - `sqd_ordering_results.txt` — early run log, 2026-08-19.
 - `outputs_dev/` — generated outputs (FCIDUMPs, circuits, bitstrings)
   from the pre-`run_ordering_pipeline.py` development pipeline.
+
+## `legacy_outputs/` (2026-08-20 - 24, pre-`experiments/outputs/` convention)
+
+Everything that used to live directly under root `outputs/`, except
+`outputs/unified/` (still live — read by `scripts/run_ordering_pipeline.py`'s
+`stage1()` as `canonical_results`, and by `scripts/unified_run.py`'s own
+reference cache). This is early H2/N2 interface validation
+(`VALIDATION.md`, `h2_sto3g_*`, `n2_equilibrium_*`, `n2_stretched_*`,
+`n2_very_stretched_*`, `n2_cas610_155*`), one-off H10 diagnostic sweeps
+(`h10_anchor_free/`, `h10_anchor_phase/`, `h10_centered_quick/`,
+`h10_end_weighted_quick/`, `h10_largest_J_quick/`, `diag_repro/`,
+`directopt/`, `constructed/`, `scaleup/`), and early figures (`figures/`,
+5 PDFs — superseded by `results/figures/`'s 47). All predate the
+one-directory-per-experiment convention now used under
+`experiments/outputs/`; nothing here is read by any current script. Not
+referenced by any of the numbers quoted in the top-level README.
+
+## `legacy_logs/` (2026-08-21)
+
+Console logs from the same early H10 smoke-test / diagnostic-sweep runs
+as `legacy_outputs/` above. Not referenced by any script or README.

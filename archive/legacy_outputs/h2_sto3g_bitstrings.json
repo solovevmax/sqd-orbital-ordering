@@ -1,0 +1,41 @@
+{
+  "total_shots": 1000000,
+  "unique_bitstrings": 4,
+  "top_bitstrings": [
+    {
+      "bitstring": "0101",
+      "count": 998459,
+      "probability": 0.998459
+    },
+    {
+      "bitstring": "1010",
+      "count": 766,
+      "probability": 0.000766
+    },
+    {
+      "bitstring": "0110",
+      "count": 390,
+      "probability": 0.00039
+    },
+    {
+      "bitstring": "1001",
+      "count": 385,
+      "probability": 0.000385
+    }
+  ],
+  "top1_bitstring": "0101",
+  "top1_fraction": 0.998459,
+  "particle_number_check": {
+    "pct_total_correct": 100.0,
+    "pct_alpha_correct": 100.0,
+    "pct_beta_correct": 100.0
+  },
+  "norb": 2,
+  "nelec": [
+    1,
+    1
+  ],
+  "source_qpy_path": "outputs/h2_sto3g_lucj.qpy",
+  "bitstring_file_path": "outputs/h2_sto3g_bitstrings.txt",
+  "bit_order_mode": "qiskit"
+}

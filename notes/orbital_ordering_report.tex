@@ -1,0 +1,1007 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,siunitx,graphicx,microtype}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{xcolor}
+\usepackage[version=4]{mhchem}
+\usepackage{abstract}
+\usepackage{titlesec}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage[font=small,labelfont=bf,skip=6pt]{caption}
+
+\graphicspath{{figures/}{./}}
+
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\sisetup{detect-weight=true, detect-family=true}
+
+\title{\textbf{Orbital Layout in Heavy-Hex LUCJ Sampling for\\
+Sample-Based Quantum Diagonalization}}
+\author{Maxim Solovev\\
+\small RIKEN Center for Computational Science\\
+\small Supervisors: Prof.\ S.\ Yunoki, Dr.\ T.\ Shirakawa}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+In sample-based quantum diagonalization (SQD), the local unitary cluster
+Jastrow (LUCJ) circuit acts as a sampler whose Jastrow couplings are
+truncated by a heavy-hex locality mask. Which couplings survive is determined
+entirely by the orbital-to-qubit assignment --- a quantity inherited from the
+active-space construction without physical justification, and treated as a
+fixed convention throughout the literature since the ansatz was introduced.
+We show that this assignment changes the SQD subspace error by up to a factor
+of eight at fixed mask, shot and determinant budgets, on two systems, with an
+effect far exceeding sampling noise (between/within variance ratios of 27.2
+and 278.2).
+
+The controlling mechanism is \emph{subspace capture} --- the fraction of the
+exact wavefunction contained in the sampled product subspace. Its correlation
+with subspace error lies between $-0.88$ and $-0.98$ across twenty-one
+distinct same-spin chains, three molecules, two orbital bases, two
+correlation regimes and two search axes, including twelve chains held out
+from all development, with no failures.
+
+The central structural result is that the mask exposes two \emph{separable
+but interacting} degrees of freedom: the same-spin \emph{chain ordering}
+($N_{\text{orb}}!$ choices) and the opposite-spin \emph{anchor selection}
+($\binom{N_{\text{orb}}}{N_{\text{orb}}/4}$ choices). At $N_{\text{orb}}=10$
+these span comparable observed error ranges --- \SI{286}{\milli\hartree} over
+50 random permutations and \SI{234}{\milli\hartree} over all 120 anchor
+triples at a fixed chain --- from search spaces differing by four orders of
+magnitude. Optimising anchors at fixed ordering compresses the spread across
+twenty chains and reverses their ranking.
+
+We prove that no purely opposite-spin quantity can select the optimal anchor
+set at every chain: such quantities are exactly invariant under the same-spin
+permutation, while the optimum is not. Three families of chain-aware
+alternatives, pre-registered across three separate attempts, all fail to
+improve on the simple opposite-spin retained Jastrow weight $S_0$. Yet under
+the objective that matters in practice --- shortlisting rather than blind
+selection --- $S_0$ performs extremely well: ranking all 120 candidates and
+evaluating only the top five reaches a median and 90th-percentile normalised
+regret of $0.002$ across the twelve held-out chains, against $0.181$ and
+$0.621$ for random selection. A circuit-resource audit against a heavy-hex
+coupling map confirms that better anchor sets require \emph{fewer} two-qubit
+gates, not more.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Problem statement}
+
+The heavy-hex locality mask retains same-spin Jastrow elements only at
+nearest-neighbour positions $(p,p+1)$ together with the on-site diagonal
+$(p,p)$, and opposite-spin elements only at $p \equiv 0 \bmod 4$. At
+$N_{\text{orb}}=10$ this keeps 19 of 55 same-spin and 3 of 55 opposite-spin
+couplings; at $N_{\text{orb}}=36$ it keeps 5.6\% of same-spin pairs.
+
+The mask itself is dictated by hardware. What is \emph{not} dictated is the
+assignment of logical molecular orbitals to the fixed hardware-compatible
+positions, and that assignment determines which couplings survive. It is
+inherited from the active-space construction without physical criterion.
+
+To our knowledge no published work varies it or reports its effect on
+accuracy. The zig-zag pattern introduced with the ansatz has been reused
+unchanged throughout the subsequent literature, and where circuit layout is
+discussed the concern is hardware quality --- avoiding high-error physical
+qubits --- rather than which orbital occupies which position. The nearest
+related work addresses the same starting problem from the opposite direction,
+re-optimising the ansatz parameters to compensate for a fixed mask rather
+than choosing what the mask retains.
+
+Permutations act on the operator,
+\begin{equation}
+e^{\hat K} e^{i\hat J} e^{-\hat K}
+= \bigl(e^{\hat K}P^{\top}\bigr)\, e^{i(PJP^{\top})}\, \bigl(Pe^{-\hat K}\bigr),
+\end{equation}
+leaving the Hamiltonian and the reference determinant untouched; the
+untruncated ansatz is bit-identically invariant under $P$. It is masking
+\emph{after} permutation that makes orderings differ.
+
+Prior treatment --- including our own earlier work --- has regarded the
+orbital-to-qubit assignment as a single object. It is not. A permutation
+determines two logically separable things: which orbital pairs are adjacent
+on the chain, fixing the same-spin mask, and which orbitals land at positions
+$p \equiv 0 \bmod 4$, fixing the opposite-spin anchors. Because the chain mask
+is invariant under reversal, these can be varied independently, although
+Section~\ref{sec:compression} shows their effects interact and partially
+compensate. Separating them is the organising principle of this report.
+
+A further distinction matters throughout. In VQE the ansatz state \emph{is}
+the answer, so minimising $\langle\psi\lvert\hat H\rvert\psi\rangle$ is the
+objective. In SQD the ansatz is only a sampler: its bitstrings select a
+determinant subspace which is then diagonalised exactly. A layout with a
+slightly worse variational energy may therefore produce a better finite
+subspace at fixed budget. Sections~\ref{sec:ansatz}
+and~\ref{sec:transmission} show this is not hypothetical.
+
+\section{Methods}
+
+\subsection{Systems}
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{llll}
+\toprule
+& \ce{N2} & \ce{H10} chain & \ce{Cr2}\\
+\midrule
+Basis & 6-31G & STO-6G & cc-pVDZ\\
+Active space & CAS(6,10) & CAS(10,10) & CAS(12,12)\\
+Geometry & $R = \SI{1.55}{\angstrom}$ & $R = \SI{1.6}{\angstrom}$ & $R = \SI{1.68}{\angstrom}$\\
+Orbitals & canonical & block-Boys localised & block-Boys localised\\
+Qubits & 20 & 20 & 24\\
+CI dimension & 14{,}400 & 63{,}504 & 853{,}776\\
+Determinants per sector & 15 & 15 & 55\\
+Subspace fraction of CI & 1.56\% & 0.354\% & 0.354\%\\
+Ideal capture at budget & 0.9866 & 0.7554 & 0.881\\
+Shots & $10^{6}$ & $2\times10^{6}$ & $2\times10^{6}$\\
+\bottomrule
+\end{tabular}
+\caption{The three benchmark systems, all exactly diagonalisable. The
+determinant budget on \ce{Cr2} was chosen to match \ce{H10}'s subspace
+fraction of the CI space exactly, so that the systems are compared at
+equivalent relative budgets rather than equivalent absolute ones.}
+\end{table}
+
+$R=\SI{1.8}{\angstrom}$ was the original \ce{H10} design point and proved
+unusable: CCSD genuinely diverges there, with $E_{\text{corr}}$ oscillating
+between \SIrange{-0.4}{-0.9}{\hartree} over 300 cycles. The benchmark was
+moved to \SI{1.6}{\angstrom}, where CCSD converges in 48 cycles. The move was
+forced by a reference-method breakdown, not by the results at either
+geometry. On \ce{Cr2}, by contrast, active-space CCSD converged cleanly in 26
+cycles ($E_{\text{corr}} = \SI{-0.610}{\hartree}$); we note this as an
+observation about the active-space problem, not as a claim about \ce{Cr2}'s
+multireference character in the full space.
+
+\subsection{Pipeline}
+
+PySCF produces the RHF reference, CCSD amplitudes, active-space FCIDUMP and
+exact CASCI vector. Amplitudes initialise an \texttt{ffsim} LUCJ operator; the
+locality mask is applied; Qiskit Aer samples bitstrings; the top determinants
+per spin sector by marginal weight form a product subspace; and \texttt{sbd}
+(Shirakawa's C++ implementation, used unmodified) performs the selected-basis
+diagonalization.
+
+Two parameter choices were established empirically and are load-bearing.
+Full-rank double factorisation is required: at low rank the ansatz collapses
+back toward Hartree--Fock, giving \SI{160}{\milli\hartree} error against CCSD
+on \ce{H10} where full rank gives \SI{1.2}{\milli\hartree}. The
+compressed-factorisation optimiser is disabled, since it was observed to
+worsen energies and to introduce nondeterminism that would confound ordering
+comparisons.
+
+Block-Boys localisation is applied separately to the occupied-active and
+virtual-active blocks. Localising over the full active space would mix
+occupied with virtual orbitals, destroying the HF reference and leaving the
+CCSD amplitudes undefined as occupied-to-virtual objects; no valid amplitude
+transformation exists in that case. Under block localisation the
+transformation is exact,
+\begin{equation}
+t^{2\prime}_{IJAB} = \sum_{ijab} U^{o}_{iI}U^{o}_{jJ}U^{v}_{aA}U^{v}_{bB}\,
+t^{2}_{ijab},
+\end{equation}
+because the CCSD wavefunction $e^{T}\lvert\mathrm{HF}\rangle$ is invariant
+under occupied-occupied and virtual-virtual rotations when the amplitudes are
+rotated with them. CCSD is not re-run in the localised basis: PySCF's CCSD
+assumes a diagonal Fock matrix for the amplitude denominators, which
+localised orbitals do not provide.
+
+\subsection{Reproducibility protocol}
+
+Identical code executed in separate processes was found to produce different
+FCIDUMP files and energies differing by \SIrange{8}{17}{\milli\hartree}, from
+thread-dependent floating-point variation in RHF/CCSD. Because sampled
+marginals decay steeply, determinant selection at tight budgets is
+near-degenerate and numerical noise flips which strings are retained. All
+results here therefore use reference data (RHF, CCSD, CASCI, FCIDUMP)
+computed once and cached, with OMP/MKL/OpenBLAS thread counts pinned to one,
+a fresh seeded simulator per evaluation, a single FCIDUMP shared across every
+layout within an experiment, and incremental persistence of results.
+
+Sampling stability is budget-dependent in a way worth stating precisely. The
+analytic marginal ratio $w_{16}/w_{15}$ at the selection boundary is 0.504
+for \ce{N2} but 0.989 for \ce{H10}. An early \ce{H10} run at
+$5\times10^{5}$ shots showed \SI{43}{\milli\hartree} of seed scatter; at
+$2\times10^{6}$ shots all five seeds return bit-identical energies and
+determinant sets. A ratio near unity means ``requires more shots'', not
+``unresolvable'': the absolute probability gap is fixed while discrimination
+signal-to-noise grows as $\sqrt{N_{\text{shots}}}$.
+
+\FloatBarrier
+\section{Validation}
+
+\begin{itemize}\itemsep3pt
+  \item \textbf{Group benchmark reproduced.} The \ce{N2} benchmark bundled
+        with \texttt{sbd} (1387 determinants at the $10^{-4}$ threshold)
+        gives $-109.0483526946501$ Ha against the published
+        $-109.04835269$ Ha, agreeing to twelve significant figures. This was
+        re-run fresh for this report rather than quoted from an earlier log.
+  \item \textbf{Limiting cases.} \ce{H2}/STO-3G returns RHF
+        ($-1.116759307396$ Ha) from an HF-only determinant file and FCI
+        ($-1.137283834489$ Ha) from the full sampled set.
+  \item \textbf{Unmasked-permutation invariance.} With the mask disabled a
+        permutation is a pure relabelling, so the SQD energy must be exactly
+        invariant. Four orderings on \ce{N2} return bit-identical
+        $-108.823644563978$ Ha with unit Jaccard overlap of the selected
+        determinant sets. This validates the operator-permutation,
+        bitstring-to-determinant and FCIDUMP-labelling chain end to end.
+  \item \textbf{Two independent implementations agree exactly.} Mechanism~A
+        permutes the operator ($PJP^{\top}$ absorbed into the orbital
+        rotations) then applies a fixed mask; mechanism~B leaves the operator
+        untouched and selects which physical orbital pairs enter the
+        interaction-pair list. Entrywise comparison of the resulting
+        diag-Coulomb matrices and orbital rotations gives exact
+        floating-point zero across all layouts tested.
+  \item \textbf{The truncation is a projection, not a refit.} The above
+        additionally establishes that \texttt{ffsim}'s
+        \texttt{interaction\_pairs} performs post-hoc zeroing of the
+        factorised $J$ rather than a constrained fit to $t_2$. The analysis
+        presupposes this, and it is now measured rather than assumed.
+  \item \textbf{Localisation preserves the active space.} Localised and
+        canonical CASCI energies agree to \num{8.5e-14}; the correlation
+        energy reconstructed from rotated amplitudes against rotated
+        integrals agrees with the canonical value to \num{2.3e-15}.
+  \item \textbf{Bitstring convention.} Qiskit writes qubit 0 rightmost;
+        \texttt{ffsim} maps alpha spin-orbitals to qubits $0..N-1$ and beta
+        to $N..2N-1$; \texttt{sbd} expects the rightmost bit to be orbital 1.
+        These coincide, so the required operation is a split, not a reversal.
+\end{itemize}
+
+\FloatBarrier
+\section{Results}
+
+\subsection{Orbital layout changes the answer by up to a factor of eight}
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Ordering & Error (mHa) & Percentile & Captured & Retained $J$\\
+\midrule
+max.\ captured (oracle) & 24.27 & 0.7\% & 0.9831 & 0.2661\\
+identity (inherited)    & 31.87 & 4.7\% & 0.9789 & 0.2874\\
+max.\ retained $J$      & 44.32 & 22.1\%& 0.9668 & 0.3195\\
+\midrule
+\multicolumn{5}{l}{\emph{149 random layouts:} best 21.65, median 49.22, worst 173.23}\\
+\bottomrule
+\end{tabular}
+\caption{\ce{N2}, CAS(6,10), 225-dimensional budget. Two seeds each;
+seed-to-seed deviation zero throughout. A five-seed study gives between/within
+variance ratio 27.2 and ranking stability $\tau=0.83$.}
+\end{table}
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrr}
+\toprule
+Ordering & Error (mHa) & Percentile\\
+\midrule
+\texttt{s2\_max}            & 192.12 & 84\%\\
+\texttt{physical\_reverse}  & 218.64 & 80\%\\
+\texttt{s1\_max}            & 219.90 & 78\%\\
+\texttt{retainedJ\_max}     & 295.82 & 26\%\\
+reverse                     & 295.93 & 26\%\\
+identity (inherited)        & 300.32 & 26\%\\
+physical (nuclear sequence) & 389.71 & 2\%\\
+\midrule
+\multicolumn{3}{l}{\emph{50 random layouts:} best 168.67, median 263.19,
+worst 454.89}\\
+\bottomrule
+\end{tabular}
+\caption{\ce{H10} baseline. 114 evaluations, no support collapses,
+seed-to-seed deviation zero for every named layout, between/within variance
+ratio 278.2.}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]%
+{fig1_effect_exists_paper.png}
+\caption{The orbital-to-qubit assignment changes the SQD subspace error by up
+to a factor of eight at fixed budget. Grey points are random layouts;
+coloured markers are named layouts. Top: \ce{H10} CAS(10,10), $n=50$,
+spanning \SIrange{168.67}{454.89}{\milli\hartree}. Bottom: \ce{N2}
+CAS(6,10), $n=149$, spanning \SIrange{21.65}{173.23}{\milli\hartree}. Dotted
+lines mark the random median. Seed-to-seed deviation is zero for every named
+layout; between/within variance ratios are 278.2 and 27.2, so the spread is
+signal rather than sampling noise.}
+\label{fig:effect}
+\end{figure}
+
+The factor of eight is the full observed range on \ce{N2}. Between the fifth
+and ninety-fifth percentiles the ratio is 2.71, and the largest-error layout
+is not an outlier: it carries the lowest captured weight in the set, sitting
+exactly where the mechanism of Section~\ref{sec:mechanism} predicts.
+Excluding it moves the capture--error correlation from $-0.880$ to $-0.877$.
+
+Two features of the \ce{H10} table matter more than the ranking. The
+geometric ordering --- orbitals sequenced by localisation centroid along the
+nuclear chain --- lands at the \emph{2nd} percentile. Spatial locality, the
+most obvious chemically motivated criterion, is actively harmful here. And
+\texttt{physical} differs from \texttt{physical\_reverse} by
+\SI{171.07}{\milli\hartree}, 60\% of the observed random spread, despite
+being the same ordering read backwards.
+
+One \ce{N2} random layout produced fewer than fifteen unique determinants per
+spin sector, collapsing the subspace to 81 dimensions with error near
+\SI{206}{\milli\hartree}. Poor layouts can suppress sampling diversity below
+the requested budget entirely.
+
+\FloatBarrier
+\subsection{The mechanism is subspace capture}
+\label{sec:mechanism}
+
+Defining captured weight as the fraction of the exact wavefunction inside the
+sampled product subspace,
+\begin{equation}
+C = \!\!\sum_{a\in S_\alpha,\; b\in S_\beta}\!\! \lvert C_{ab}\rvert^{2},
+\end{equation}
+gives Spearman $\rho=-0.880$ ($p=\num{3e-49}$) across the 149 random \ce{N2}
+layouts, $\rho=-0.983$ ($p=\num{3.6e-37}$) across the 50 random \ce{H10}
+layouts, and $\rho=-0.97$ on \ce{Cr2}. The causal chain is
+\begin{equation}
+\text{layout} \rightarrow \text{sampled determinant distribution}
+\rightarrow \text{captured weight at fixed budget}
+\rightarrow \text{SQD subspace error}.
+\end{equation}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]%
+{fig2_mechanism_paper.png}
+\caption{Subspace capture is the controlling variable, on all three systems.
+Dashed vertical lines mark the ideal capture ceiling at each system's
+determinant budget. \ce{N2} capture values cluster near the ceiling whereas
+\ce{H10} spans \numrange{0.40}{0.71}, which is why approximate capture
+surrogates fail on \ce{N2} for reasons of resolution rather than fidelity.}
+\label{fig:mechanism}
+\end{figure}
+
+The relationship was subsequently tested on twelve same-spin chains held out
+from all development (Section~\ref{sec:heldout}), where it holds at 12 of 12
+without exception. Across the whole study it has been measured on twenty-one
+distinct chains spanning three molecules, canonical and localised orbital
+bases, weak and strong correlation regimes and both search axes, with $\rho$
+between $-0.88$ and $-0.98$ throughout and no failures.
+
+We emphasise that exact captured weight is an \emph{oracle diagnostic}. It
+requires the exact wavefunction and is used to identify the mechanism at
+classically tractable scale, not as a production selection criterion.
+
+\FloatBarrier
+\subsection{No scalar predictor of the permutation search works}
+
+Eleven score variants --- amplitude-weighted retained-interaction measures and
+dominant-excitation reachability measures constructed from CCSD $t_1,t_2$,
+plus retained $J$ --- were evaluated against the 50-layout \ce{H10}
+distribution. None reaches significance as a selector: $s_{1,\text{amp}}$
+gives $\rho=-0.032$, $s_2$ gives $\rho=+0.091$, retained $J$ gives
+$\rho=+0.001$. The strongest single variant reaches only $\rho=-0.377$
+($p=\num{7.0e-3}$). Every selection regret equals or exceeds the
+random-selection baseline of \SI{95.01}{\milli\hartree}.
+
+Two structural explanations emerge, and both are more informative than the
+null results themselves.
+
+\textbf{Sign cancellation.} Retained $J$ decomposed by spin sector gives
+$\rho=+0.212$ (not significant) for the same-spin contribution and
+$\rho=-0.375$ ($p=\num{7.3e-3}$) for the opposite-spin contribution. The two
+carry opposite signs and cancel to $+0.001$. The combined metric was
+averaging a real signal against a spurious one --- and the surviving signal
+lies entirely in the opposite-spin sector. This was the first indication that
+the two sectors should be treated as separate degrees of freedom.
+
+\textbf{Precision, not accuracy.} On \ce{N2}, capture values cluster in
+\numrange{0.96}{0.98}, so differences below one per cent decide the ranking.
+A CISD surrogate with marginal overlap 0.973 --- 97.3\% accurate --- reaches
+only $\rho=-0.43$, because a target good to 2.7\% cannot resolve differences
+of 0.5\%. Approximate capture targets fail on resolution, not fidelity.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]%
+{fig6_null_results_paper.png}
+\caption{No cheap scalar predicts the permutation search. Spearman $\rho$
+against subspace error for all eleven score variants across the 50 random
+\ce{H10} layouts, with bootstrap 95\% confidence intervals. Ten of eleven
+intervals cross zero. The final two rows decompose retained $J$ by spin
+sector, showing the cancellation.}
+\label{fig:nulls}
+\end{figure}
+
+For completeness: mutual-information Fiedler ordering imported from DMRG
+reaches the 27th percentile on \ce{N2}; an entanglement-weighted variant
+reaches the 69th; and \emph{maximising} retained $J$ makes matters worse on
+both systems. Orbital-ordering heuristics developed for
+matrix-product-state methods, where ordering controls bond dimension, do not
+transplant to this problem.
+
+\FloatBarrier
+\subsection{The mask has two separable levers}
+
+The same-spin chain mask is invariant under reversal: orbitals adjacent at
+positions $(k,k+1)$ remain adjacent at $(n-2-k,\,n-1-k)$. This was verified
+symbolically for all 57 baseline permutations (57/57). Reversing a layout
+therefore changes \emph{only} which orbitals occupy positions
+$p\equiv 0\bmod 4$ and hence receive opposite-spin on-site coupling.
+
+The \SI{171.07}{\milli\hartree} \texttt{physical}/\texttt{physical\_reverse}
+gap is thus attributable entirely to anchor placement. Holding the same-spin
+ordering fixed and sweeping the anchor offset over
+$p\equiv\text{offset}\bmod 4$ spans \SI{171.08}{\milli\hartree}, agreeing
+with the reversal gap to \SI{0.01}{\milli\hartree}. There is no universal
+best offset: \texttt{identity} and \texttt{physical} prefer offset~1,
+\texttt{physical\_reverse} and \texttt{s2\_max} prefer offset~0 --- an early
+indication that the levers interact.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+Lever & Search space & Sampled & Observed range (mHa)\\
+\midrule
+Same-spin ordering (random permutations) & $10! = \num{3628800}$ & 50 & 286.23\\
+Free anchor selection at fixed chain & $\binom{10}{3}=120$ & 120 & 234.10\\
+Anchor offset at fixed chain & 4 & 4 & 171.08\\
+\bottomrule
+\end{tabular}
+\caption{The anchor lever is comparable in magnitude to the permutation
+search while spanning a space smaller by four orders of magnitude. Ranges are
+observed over the stated samples at \ce{H10}; the anchor row is exhaustive
+over all 120 triples at the identity chain, the permutation row a 50-element
+sample of $10!$.}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]%
+{fig3_two_levers_paper.png}
+\caption{Observed error range attributable to each lever on \ce{H10},
+annotated with the size of the corresponding search space.}
+\label{fig:levers}
+\end{figure}
+
+\FloatBarrier
+\subsection{Anchor optimisation compresses the layout spread}
+\label{sec:compression}
+
+To test whether the two levers interact, twenty same-spin chains spanning the
+baseline range were each evaluated over a common set of anchor triples: eight
+in an initial paired design, and twelve further chains held out from all
+development.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+Chain & Default anchors & Best anchors & Change\\
+\midrule
+\texttt{rand030} (best baseline)  & 168.67 & 180.81 & $+12.14$\\
+\texttt{rand037}                  & 175.60 & \textbf{170.47} & $-5.13$\\
+\texttt{rand007}                  & 261.60 & 184.33 & $-77.27$\\
+\texttt{rand032}                  & 264.78 & 172.97 & $-91.81$\\
+\texttt{identity} (inherited)     & 300.32 & 230.31 & $-70.01$\\
+\texttt{rand047}                  & 383.16 & 181.38 & $-201.78$\\
+\texttt{physical}                 & 389.71 & 175.17 & $-214.54$\\
+\texttt{rand029} (worst baseline) & 454.89 & 186.74 & $-268.15$\\
+\bottomrule
+\end{tabular}
+\caption{The initial eight-chain paired design. \texttt{rand030}'s
+best-of-candidates exceeds its default because its default anchor triple was
+not among the sampled candidates; a comparability audit found this to be the
+case for 6 of these 8 chains, so this table understates the achievable
+improvement. The compression factor quoted below is computed over twenty
+chains with the default triple always included.}
+\end{table}
+
+Three features matter. First, the \textbf{compression}: most of what presents
+as an orbital-ordering effect is an anchor-placement effect. The same-spin
+permutation and the opposite-spin anchor set are not independent
+contributions but largely substitutable ones, and a poor permutation can be
+substantially compensated by a good anchor choice.
+
+Second, the \textbf{rank reversals}. \texttt{rand029}, the worst of all 50
+random layouts at default anchors, attains \SI{186.74}{\milli\hartree} once
+its anchors are optimised --- better than \texttt{rand030}, the best of all
+50, attains at \SI{180.81}{\milli\hartree}. \texttt{physical}, at the 2nd
+percentile of the baseline distribution, reaches
+\SI{175.17}{\milli\hartree}. The global optimum in the eight-chain design
+came from a chain at only the 75th percentile.
+
+Third, \textbf{residual chain dependence}. The post-optimisation spread is
+not zero. Same-spin ordering continues to matter; it matters far less than
+the raw baseline distribution suggests. The rank correlation between baseline
+and post-optimisation error was $\rho = +0.405$ ($p = 0.320$) on the initial
+eight chains --- inconclusive rather than null at that sample size. We
+therefore do not claim that baseline ranking fails to predict
+post-optimisation ranking, only that the compression and the observed
+reversals are inconsistent with baseline quality being a reliable guide.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]%
+{fig7a_compression_paper.png}
+\caption{Anchor optimisation compresses the layout spread. Each line connects
+one same-spin chain's subspace error at the inherited $p\equiv 0\bmod 4$
+anchor placement to its error at the best anchor triple found. The fan
+collapses and the lines cross: the worst baseline chain overtakes the best.}
+\label{fig:interaction}
+\end{figure}
+
+The practical implication is direct. Optimising the same-spin permutation
+first and accepting whatever anchor placement follows --- the conventional
+framing, and our own until this experiment --- addresses the smaller and far
+more expensive lever.
+
+\FloatBarrier
+\subsection{The anchor effect is present in the ansatz itself}
+\label{sec:ansatz}
+
+Every result above measures SQD subspace error, which depends jointly on the
+ansatz, the sampling and the determinant selection. To separate these we
+computed the variational energy of the masked LUCJ state directly,
+\begin{equation}
+\varepsilon_{\text{LUCJ}} = 10^{3}
+\left(
+\frac{\langle\psi_{\text{LUCJ}}\lvert \hat H \rvert\psi_{\text{LUCJ}}\rangle}
+{\langle\psi_{\text{LUCJ}}\vert\psi_{\text{LUCJ}}\rangle}
+- E_{\text{CASCI}}
+\right),
+\end{equation}
+in the number-conserving sector, with no sampling and no diagonalisation.
+
+The anchor effect is clearly present at the ansatz level. At \ce{H10}
+identity, $\varepsilon_{\text{LUCJ}}$ spans \SI{135.03}{\milli\hartree}
+against the \SI{234.10}{\milli\hartree} SQD range, a ratio of 0.577; the ratio
+stays in \numrange{0.44}{0.63} at every chain. The
+``anchors can be worse than nothing'' result of
+Section~\ref{sec:floor} also replicates independently: 5 of 120 triples
+(4.2\%) give a worse variational energy than the no-$\alpha\beta$ control,
+against 4.0\% measured at the SQD level in an entirely separate pipeline.
+
+Ansatz quality transmits to the SQD outcome only partially, and only at some
+chains. At \ce{H10} identity,
+$\rho(\varepsilon_{\text{LUCJ}}, \varepsilon_{\text{SQD}}) = +0.527$, and
+$+0.475$ ($p=\num{4.1e-7}$) with the 17 degenerate floor triples excluded, so
+the relationship is not an artefact of the extremes. At \texttt{physical} and
+\texttt{rand007} it is not significant either way. This is a direct
+demonstration of the VQE/SQD distinction: a better ansatz is not reliably a
+better sampler.
+
+\FloatBarrier
+\subsection{The no-coupling floor, and anchors that actively harm}
+\label{sec:floor}
+
+Seventeen of the 120 triples at \ce{H10} identity return an identical error
+of \SI{458.70}{\milli\hartree}. A direct control with the opposite-spin
+interaction list emptied returns \SI{458.6997}{\milli\hartree}, identifying
+this as the \emph{no-$\alpha\beta$-correlation floor}: those triples place
+anchors on orbitals whose $\lvert J^{\alpha\beta}_{pp}\rvert$ is negligible
+(mean 1.30, against 8.03 for the best ten), so the opposite-spin sector
+contributes nothing.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Chain & Floor (no $\alpha\beta$) & Default anchors & Best anchors & Worse than floor\\
+\midrule
+identity  & 458.70 & 300.32 & 224.60 & 0/120\\
+rand007   & 372.86 & 261.60 & 175.54 & 3/40\\
+physical  & 379.25 & \textbf{389.71} & \textbf{172.15} & 1/40\\
+\bottomrule
+\end{tabular}
+\caption{At \texttt{physical} the inherited $p\equiv 0\bmod 4$ anchor
+placement is \SI{10.46}{\milli\hartree} \emph{worse} than removing
+opposite-spin coupling altogether. Both figures are 15-dimensional at
+$2\times10^{6}$ shots and reproduce exactly on re-run.}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth,height=0.45\textheight,keepaspectratio]%
+{fig5_floor_and_limits_paper.png}
+\caption{The no-$\alpha\beta$-correlation floor, the inherited anchor
+placement and the best anchor selection found, at three same-spin chains.
+Dashed lines carry each chain's own floor across its group.}
+\label{fig:floor}
+\end{figure}
+
+Across all 50 random layouts, 2 of 50 (4.0\%) have a default-anchor error
+worse than their own floor, with a mean penalty of
+\SI{33.75}{\milli\hartree}. The effect is a minority case but systematic:
+$\rho(\text{baseline error},\; \text{floor}-\text{default gap}) = -0.359$
+($p=0.010$), meaning opposite-spin coupling helps at good chains and hurts at
+bad ones. A guard that disables the opposite-spin sector when it fails to
+help costs one additional evaluation per chain.
+
+An apparently larger anomaly on \ce{N2} --- 20\% of triples worse than the
+floor at one chain --- proved to be floor proximity rather than structure.
+That chain's floor lies at \SI{49.69}{\milli\hartree} against
+\SI{114.00}{\milli\hartree} elsewhere, so an equal absolute penalty crosses it
+far more often; the worse-than-floor triples show no distinguishing signature
+in any diagnostic (all Mann--Whitney $p>0.27$).
+
+\FloatBarrier
+\subsection{Transfer across systems}
+\label{sec:transfer}
+
+The anchor axis was repeated on \ce{N2} --- a different molecule, canonical
+rather than localised orbitals, weak correlation --- and on \ce{Cr2}, a 3d
+transition-metal dimer with a localised active space.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+& \ce{H10} & \ce{N2} & \ce{Cr2}\\
+\midrule
+Anchor range at identity (mHa) & 234.10 & 89.73 & ---\\
+Capture ceiling & 0.7554 & 0.9866 & 0.881\\
+Headroom (ceiling $-$ mean achieved) & 0.1620 & 0.0352 & ---\\
+\textbf{Range per unit headroom (mHa)} & \textbf{1445} & \textbf{2550} & \textbf{1677}\\
+$\rho(C, \varepsilon_{\text{SQD}})$ & $-0.983$ & $-0.877$ & $-0.97$\\
+$\rho(S_0, \varepsilon_{\text{LUCJ}})$ & $-0.850$ & $-0.965$ & $-0.96$ to $-0.97$\\
+Best triple moves between chains & yes & yes & yes\\
+\bottomrule
+\end{tabular}
+\caption{Anchor-axis quantities on all three systems. The raw anchor range is
+smaller on \ce{N2}, but normalised by available capture headroom the \ce{N2}
+lever is the \emph{strongest} of the three: the smaller raw number reflects
+proximity to the ceiling, not a weaker effect.}
+\end{table}
+
+Two observations. The headroom normalisation, introduced to explain the
+\ce{N2} result, is supported by a third independent point on \ce{Cr2}, which
+falls between the other two. And at \ce{Cr2}, identity and reverse chains
+gave bit-identical results, independently confirming the reversal-invariance
+argument on a system from which it was never derived.
+
+\FloatBarrier
+\subsection{Why the chain dependence exists}
+\label{sec:transmission}
+
+Decomposing the pathway into two links,
+\begin{equation}
+\underbrace{\varepsilon_{\text{LUCJ}} \rightarrow C}_{\text{link 1}}
+\qquad
+\underbrace{C \rightarrow \varepsilon_{\text{SQD}}}_{\text{link 2}},
+\end{equation}
+and measuring each at six chains across two systems, link 2 holds everywhere
+without exception ($\rho$ between $-0.88$ and $-0.96$). Link 1 fails at
+\ce{H10} \texttt{physical} and \texttt{rand007}. The bottleneck is not the
+subspace diagonalisation but whether a variationally good state also
+concentrates its sampling distribution usefully. Six candidate diagnostics of
+the sampled distribution --- unique string counts, entropy, Gini coefficient,
+top-15 mass, and the boundary ratio --- fail to explain the residual
+consistently; the best is significant at only 2 of 6 chains.
+
+\paragraph{No purely opposite-spin rule can select the optimum at every chain.}
+Define
+\begin{equation}
+S_0(A) \;=\; \sum_{p\in A} \bigl\lvert J^{\alpha\beta}_{pp}\bigr\rvert,
+\label{eq:s0}
+\end{equation}
+summed over repetitions and normalised, where $A$ is the anchor set. The
+decisive observation is algebraic rather than statistical: $S_0$ depends only
+on \emph{which} orbitals are anchored, never on the same-spin permutation. It
+is therefore exactly invariant under that permutation and assigns an
+identical set of values to the candidate anchor sets at every chain. The
+chain-specific optimum, however, moves: the best triple differs at every
+chain tested on all three systems. A stationary ranking is being asked to
+track a moving target.
+
+This sets a precise requirement on any successor: \emph{a rule that selects
+the optimal anchor set at every chain must incorporate same-spin chain
+information}. Purely opposite-spin quantities are provably insufficient for
+that objective, however well they perform at a particular chain.
+
+\FloatBarrier
+\subsection{Three families of chain-aware alternatives, all pre-registered, all failed}
+\label{sec:chainaware}
+
+Acting on that requirement, three families of chain-aware scores were
+declared in advance of evaluation across three separate attempts, with
+development restricted to identity chains and all other chains held out.
+
+\textbf{Round 1 --- four scores targeting the variational energy.}
+$S_1$ reach-weighted, multiplying each anchor's opposite-spin weight by the
+retained same-spin coupling strength in its chain neighbourhood; $S_2$
+coverage, penalising anchors that cluster on the chain; $S_3$
+amplitude-reach; $S_4$ combining $S_1$ and $S_2$. One declared hyperparameter
+sweep. None improved on $S_0$ in worst-case correlation.
+
+\textbf{Round 2 --- two scores targeting capture directly.}
+$T_1$ anchor-conditioned reachability of dominant CCSD excitation channels;
+$T_2$ a perturbative estimate of the masked state's support. Both were
+markedly \emph{worse} than $S_0$: their worst-case correlations with capture
+are $-0.486$ and $-0.644$ against $S_0$'s $+0.361$, and they carry the wrong
+sign at 14 and 15 of 18 chains respectively. Targeting capture directly
+performs worse than targeting the ansatz energy.
+
+\textbf{Round 3 --- an anchor--neighbour interface score.}
+\begin{equation}
+S_{\text{int}}(c, A) = \sum_{a \in A}\;
+\sum_{n \in N_{\text{same}}(a;c)}
+\bigl\lvert J^{\alpha\beta}_{an}\bigr\rvert \cdot
+\bigl\lvert J^{\text{same}}_{an}\bigr\rvert,
+\end{equation}
+with zero free parameters, on the rationale that an anchor seeds
+$\alpha\beta$ correlation which the chain then propagates through retained
+same-spin couplings. Unlike rounds 1 and 2 this passes an automatic
+invariance pre-flight --- its value genuinely changes under same-spin
+permutation --- but it does not improve on $S_0$ under the shortlist
+criterion of Section~\ref{sec:shortlist} (median regret 0.036 against
+$S_0$'s 0.002).
+
+Seven pre-declared scores across three attempts and two prediction targets,
+none improving on the simple opposite-spin quantity. We report this as a
+closed negative result: the obvious ways of injecting same-spin information
+into an anchor score do not repair the chain dependence.
+
+\FloatBarrier
+\subsection{Out-of-sample validation on twelve held-out chains}
+\label{sec:heldout}
+
+Twelve \ce{H10} same-spin chains were drawn from a fixed seed and verified
+disjoint from every chain used anywhere in the study. All 120 anchor triples
+were evaluated at the ansatz level at each (1440 evaluations), and a paired
+43-triple set plus the default placement and the no-$\alpha\beta$ control at
+the SQD level (540 evaluations, zero support collapses).
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lr}
+\toprule
+Quantity across 18 chains & $S_0$\\
+\midrule
+$\rho(S_0, C)$: correct sign & \textbf{18/18}\\
+$\rho(S_0, C)$: significant at $p<0.05$ & \textbf{18/18}\\
+$\rho(S_0, C)$: median & $+0.703$\\
+$\rho(S_0, C)$: worst case & $+0.361$\\
+$\rho(S_0, \varepsilon_{\text{SQD}})$: correct sign & \textbf{18/18}\\
+Argmax normalised regret: median & 0.347\\
+Argmax normalised regret: chains exceeding 1.0 & 1/18\\
+$\rho(C, \varepsilon_{\text{SQD}})$ holds & \textbf{12/12} held out\\
+\bottomrule
+\end{tabular}
+\caption{$S_0$ correlates with capture in the correct direction, significantly,
+at every one of eighteen chains. Its single argmax failure
+(\texttt{newchain11}, regret 1.152) traces to an exact tie in the score
+between two candidate triples, broken by an uninformative lexicographic rule;
+the score's correlation at that chain is unaffected ($+0.609$, significant).}
+\end{table}
+
+\FloatBarrier
+\subsection{The deployable objective is a shortlist, not a single pick}
+\label{sec:shortlist}
+
+Selecting one anchor set blind by $\mathrm{argmax}\,S_0$ is not how the rule
+would be used. With 120 candidates and an affordable evaluation, a
+practitioner ranks them and evaluates a handful. We therefore report
+\emph{best-of-top-$k$} normalised regret: rank all candidates by the score,
+evaluate the top $k$, and take the best result.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Best-of-top-5 normalised regret & $S_0$ & $S_{\text{int}}$ & $S_0+S_{\text{int}}$ & random\\
+\midrule
+median & \textbf{0.002} & 0.036 & 0.008 & 0.181\\
+90th percentile & \textbf{0.002} & 0.036 & 0.008 & 0.621\\
+\bottomrule
+\end{tabular}
+\caption{Twelve held-out chains, evaluated once. Ranking the 120 anchor sets
+by $S_0$ and evaluating only the top five reaches within 0.2\% of the best
+candidate's error, with no tail: the 90th percentile equals the median.
+Random selection of five candidates gives 0.181 and 0.621.}
+\end{table}
+
+This is the practical resolution of the tension in
+Section~\ref{sec:transmission}. $S_0$ provably cannot identify the optimum at
+every chain, and its argmax does fail at one chain in eighteen. But under
+shortlisting the invariance limitation costs \SI{0.2}{\percent} of the
+available improvement, at a cost of five evaluations from a space of 120.
+
+\FloatBarrier
+\subsection{Circuit resource accounting}
+\label{sec:resources}
+
+All comparisons above hold fixed the mask size, shot budget and determinant
+budget. Whether they also hold circuit cost fixed was verified directly, by
+transpiling each layout's masked LUCJ circuit against a heavy-hex coupling
+map (\texttt{CouplingMap.from\_heavy\_hex}, distance 5, 57 qubits) with five
+independent routing seeds per layout.
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+Configuration & $\Delta$ error (mHa) & $\Delta$ 2Q gates & gates / mHa\\
+\midrule
+\ce{H10} identity, default $\to$ best & $-75.72$ & $-66.6$ & $-0.88$\\
+\ce{H10} physical, default $\to$ best & $-217.56$ & $+336.6$ & $+1.55$\\
+\ce{N2} identity, default $\to$ best & $-7.60$ & $-880.8$ & $-115.89$\\
+\ce{Cr2} identity, default $\to$ best & $-38.84$ & $-2823.4$ & $-72.69$\\
+\bottomrule
+\end{tabular}
+\caption{Resource cost of each quoted improvement. Three of the four recover
+accuracy while \emph{reducing} two-qubit gate count. Only \ce{H10}
+\texttt{physical} pays a resource cost, and it is small relative to that
+circuit's total size.}
+\end{table}
+
+Layouts are \emph{not} exactly resource-neutral. Across the 120 anchor
+triples at \ce{H10} identity the coefficient of variation is 5.1\% in
+two-qubit gate count, 11.6\% in depth and 27.4\% in SWAP count; across 20
+same-spin chains it is 19.0\%, 21.7\% and 37.5\%. Layout variation exceeds
+routing-seed variation by a factor of 1.39, so it is signal rather than
+noise. The 5.1\% figure on the anchor axis is 96\% attributable to routing:
+the logical, pre-routing two-qubit gate count varies by only 0.27\% across
+the 120 triples, as expected given that every triple retains exactly three
+opposite-spin terms.
+
+Two findings favour the anchor axis. On that axis, resource cost and accuracy
+move \emph{together}: $\rho(\text{2Q gates}, S_0) = -0.709$ and
+$\rho(\text{2Q gates}, \varepsilon_{\text{SQD}}) = +0.608$, so better anchor
+sets require fewer gates. And the same-spin axis is by far the dominant
+hardware cost: \texttt{physical} requires roughly 26{,}500 two-qubit gates
+and 5{,}284 SWAPs against \texttt{identity}'s 12{,}800 and 650, a factor of
+two in gates and eight in SWAPs.
+
+We therefore do not claim ``fixed quantum resources'' in the strict sense.
+The defensible statement is that anchor selection improves accuracy at
+approximately constant, and typically slightly reduced, two-qubit gate count,
+while same-spin reordering can double it.
+
+\FloatBarrier
+\section{Deployment and scaling}
+
+The scaling argument is the practical case for the anchor axis. At
+$N_{\text{orb}}=20$ with five anchor positions the anchor space is
+$\binom{20}{5}=\num{15504}$; at $N_{\text{orb}}=36$ with nine it is
+$\binom{36}{9}\approx\num{9.4e7}$, against $36!\approx\num{3.7e41}$ for the
+permutation search. Combined with the shortlist result of
+Section~\ref{sec:shortlist}, the deployment recipe is: rank the anchor
+candidates by $S_0$, evaluate the top five, take the best. On the twelve
+held-out chains that recipe lands within 0.2\% of the best available
+candidate.
+
+An A64FX build of \texttt{sbd} has been established on Fugaku via the
+repository's LLVM/OpenBLAS CMake preset, cross-compiled with
+\texttt{mpiclang++} and verified as an \texttt{aarch64} binary, with job
+submission through \texttt{pjsub} confirmed working end to end. Numerical
+validation against the group benchmark is incomplete and no Fugaku-derived
+numbers appear in this report. Timing measurements indicate that Fugaku's
+value for this workload is throughput rather than single-job latency: the
+anchor sweep is embarrassingly parallel across many short independent
+diagonalisations, whereas individual A64FX cores are slower than the local
+development hardware.
+
+The binding constraint on system size is classical simulation, not the
+solver. Each \ce{Cr2} evaluation at 24 qubits required roughly 16 minutes, of
+which 962 seconds was Aer statevector simulation; cost scales as
+$2^{2N_{\text{orb}}}$. A [2Fe--2S]-scale active space at 40 qubits is
+therefore out of reach of this workflow classically, though on hardware the
+sampling would be free and the entire cost would be the anchor enumeration
+--- precisely the axis shown here to be small.
+
+\FloatBarrier
+\section{Contributions}
+
+\begin{enumerate}\itemsep3pt
+  \item A validated pipeline reproducing the group's published benchmark to
+        twelve significant figures, with end-to-end permutation-invariance
+        and cross-implementation equivalence checks.
+  \item Quantification of the orbital-layout effect on two systems, robust to
+        sampling noise (between/within variance ratios 27.2 and 278.2).
+  \item Identification of subspace capture as the governing mechanism,
+        holding at twenty-one chains across three molecules, two orbital
+        bases, two correlation regimes and both search axes, including twelve
+        chains held out from all development.
+  \item A characterised negative result on cheap prediction of the
+        permutation search --- eleven variants --- with two structural
+        explanations: spin-sector sign cancellation, and a resolution rather
+        than fidelity limit on approximate capture targets.
+  \item \textbf{Decomposition of the locality mask into two separable but
+        interacting levers}, with the opposite-spin anchor lever shown
+        comparable in magnitude to the permutation search while occupying a
+        space four orders of magnitude smaller.
+  \item Demonstration that anchor optimisation compresses the observed layout
+        spread across twenty chains and reverses their ranking.
+  \item \textbf{A proof that no purely opposite-spin quantity can select the
+        optimal anchor set at every chain}, with seven pre-registered
+        chain-aware alternatives across three attempts that fail to repair
+        it.
+  \item \textbf{A deployable shortlist rule}: ranking anchor candidates by
+        opposite-spin retained Jastrow weight and evaluating the top five
+        reaches median and 90th-percentile normalised regret of 0.002 on
+        twelve held-out chains, against 0.181 and 0.621 for random selection.
+  \item A circuit-resource audit establishing that better anchor sets require
+        fewer two-qubit gates, and that same-spin reordering rather than
+        anchor selection is the dominant hardware cost.
+\end{enumerate}
+
+\section{Limitations and non-claims}
+
+\begin{itemize}\itemsep3pt
+  \item We do \emph{not} claim a rule that identifies the optimal anchor set
+        at every chain. The opposite is proved for opposite-spin-only
+        quantities.
+  \item We do \emph{not} claim strict fixed quantum resources. Layouts differ
+        in transpiled gate count and depth (Section~\ref{sec:resources});
+        comparisons are at fixed mask size, shot budget and determinant
+        budget.
+  \item Captured weight is an oracle diagnostic requiring the exact
+        wavefunction. It identifies the mechanism; it is not a production
+        criterion.
+  \item Orbital layout does not repair the failure of a single-reference
+        ansatz on a strongly correlated system. The \ce{Cr2} study is a
+        transfer test of the layout phenomenon, not a chemistry result.
+  \item Observed error ranges are over the stated samples, not bounds over
+        the full search space.
+  \item All results are at a single shot budget per system and a single
+        determinant budget; no hardware execution was performed.
+\end{itemize}
+
+\section{Next steps}
+
+\begin{enumerate}\itemsep3pt
+  \item \textbf{A chain-aware rule with a generality guarantee}, beyond the
+        three families tested. The requirement is precisely specified by
+        Section~\ref{sec:transmission}; what remains open is whether any
+        cheap quantity satisfies it.
+  \item \textbf{Explain link-1 failure directly}, comparing the
+        $J^{\alpha\beta}_{pp}$ distribution, occupied/virtual character and
+        per-anchor capture contributions between chains where ansatz quality
+        transmits and where it does not.
+  \item \textbf{Validate the shortlist recipe on a fourth system} and at a
+        second shot budget, to establish that the 0.002 regret figure is a
+        property of the method rather than of \ce{H10}.
+  \item \textbf{Complete Fugaku numerical validation} and demonstrate the
+        job-array route, so anchor enumeration at $N_{\text{orb}}\ge 20$
+        becomes routine.
+  \item \textbf{Hardware execution}, where sampling is free and the anchor
+        enumeration is the entire cost.
+\end{enumerate}
+
+\FloatBarrier
+\section*{Reproducibility}
+
+All code, cached reference data, per-evaluation result files and experiment
+metadata are available at
+\url{https://github.com/solovevmax/sqd-orbital-ordering}. Each experiment
+directory records the git commit, SHA-256 hashes of every reference artefact
+used, shot counts, random seeds and wall time. The \texttt{sbd} solver is used
+unmodified throughout.
+
+\paragraph{A withdrawn result, and why a rank statistic missed it.}
+An earlier reimplementation of the locality mask omitted the same-spin
+diagonal $(p,p)$ terms --- 10 of 31 retained entries per repetition. All
+\ce{H10} results obtained before 25 August 2026 were consequently withdrawn
+and re-measured. \ce{N2} results were unaffected: the original implementation
+always included the diagonal.
+
+The omission is physically consequential. Since
+$J_{pp}n_{p\sigma}n_{p\sigma} = J_{pp}n_{p\sigma}$ by idempotency, these
+terms are single-qubit $Z$ rotations, unconstrained by heavy-hex connectivity
+and therefore never a legitimate target for a locality mask.
+
+The validation that failed to detect it is instructive. The two mask models
+were compared by Spearman correlation of retained $J$ and agreed at $+0.993$.
+But the diagonal is permutation-invariant: omitting it subtracts the same
+constant from every layout, and a rank statistic is by construction blind to
+an additive offset. A Pearson comparison on absolute values, or a comparison
+of retained-pair counts, would have caught it immediately. Both
+implementations now import a single shared mask module, guarded by a
+regression test over 20 random permutations.
+
+\paragraph{A corrected compression figure.} An earlier eight-chain estimate of
+the anchor-optimisation compression factor was superseded when a
+comparability audit established that the default anchor triple was absent
+from the sampled candidate set at 6 of those 8 chains, so ``best of
+candidates'' had excluded the incumbent. The figure quoted in
+Section~\ref{sec:compression} is recomputed over twenty chains with the
+default always included.
+
+\paragraph{A corrected verdict.} A sign-convention error in the score-comparison
+analysis silently substituted each score's \emph{best} chain for its
+\emph{worst}, producing two false ``beats $S_0$'' verdicts in round 2. The
+per-chain tables, hyperparameter sweep and regret figures were correct
+throughout; only the worst-case summary statistic and the verdict derived
+from it were affected. The corrected result is reported in
+Section~\ref{sec:chainaware}.
+
+\end{document}

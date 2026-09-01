@@ -120,8 +120,15 @@ reference cache). This is early H2/N2 interface validation
 `directopt/`, `constructed/`, `scaleup/`), and early figures (`figures/`,
 5 PDFs — superseded by `results/figures/`'s 47). All predate the
 one-directory-per-experiment convention now used under
-`experiments/outputs/`; nothing here is read by any current script. Not
-referenced by any of the numbers quoted in the top-level README.
+`experiments/outputs/`; nothing here is read by any current script.
+
+**Correction:** this note originally also claimed nothing here was
+referenced by any number in the report. That was wrong — the
+reproducibility audit found the report's "five-seed study" figures
+(between/within variance ratio 27.2, Kendall τ=0.83) trace to
+`seed_replication_n2_cas610_155.csv`, which was filed here. That file has
+been moved to `experiments/outputs/n2_seed_stability/` (see its README);
+two identical copies remain here, superseded by the relocated one.
 
 ## `legacy_logs/` (2026-08-21)
 

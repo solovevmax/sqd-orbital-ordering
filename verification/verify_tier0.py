@@ -79,7 +79,7 @@ C.check("r1_n2_maxretJ_err", 44.32, round(n2_named.get("max_retainedJ", float("n
 # (2 seeds only) -- it is a separate, archived legacy dataset. Found via
 # targeted search; flagged in REPORT.md as claim provenance living in
 # archive/, not any current experiment directory.
-n2_5seed = pd.read_csv(REPO_ROOT / "archive/legacy_outputs/seed_replication_n2_cas610_155.csv")
+n2_5seed = pd.read_csv(REPO_ROOT / "experiments/outputs/n2_seed_stability/seed_replication.csv")
 n2_5seed_piv = n2_5seed.pivot_table(index="ordering", columns="seed", values="err_sub_mHa").dropna()
 between5 = n2_5seed_piv.mean(axis=1).var()
 within5 = n2_5seed_piv.var(axis=1).mean()
@@ -179,10 +179,9 @@ worse = (f1c_ok.default_err > f1c_ok.floor_err).sum()
 C.check("floor_50random_worse_than_floor_count_frac", 4.0, round(100 * worse / len(f1c_ok), 1), 0.5,
         f"{worse}/{len(f1c_ok)}")
 
-import json, ast
 lucj = pd.read_csv(REPO_ROOT / "experiments/outputs/lucj_control/identity_120_lucj.csv")
-lucj_meta = json.loads((REPO_ROOT / "experiments/outputs/lucj_control/metadata.json").read_text())
-noab_control = ast.literal_eval(lucj_meta["no_ab_control_err_lucj"])["identity"]
+noab = pd.read_csv(REPO_ROOT / "experiments/outputs/lucj_control/no_ab_control.csv")
+noab_control = float(noab.set_index("chain").loc["identity", "err_lucj"])
 worse_lucj = int((lucj.err_lucj > noab_control).sum())
 C.check("ansatz_worse_than_control_pct", 4.2, round(100 * worse_lucj / len(lucj), 1), 0.5,
         f"{worse_lucj}/{len(lucj)}, control={noab_control:.4f} mHa")

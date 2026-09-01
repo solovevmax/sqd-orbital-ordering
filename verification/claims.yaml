@@ -1,0 +1,1778 @@
+# Claims manifest -- notes/orbital_ordering_report.tex + notes/presentation/
+# RIKEN Research Presentation.pptx (slide text extracted via python-pptx).
+# Built by reading both sources in full and extracting every numeric claim
+# (not prose/narrative numbers like section references or equation labels).
+#
+# tolerance classes (as declared for this audit):
+#   exact_energy_ha       -- deterministic sbd run, fixed inputs: 1e-9 Ha
+#   exact_bit             -- bit-identical claims: EXACT, zero tolerance
+#   correlation           -- Spearman/Pearson recomputed from same CSV: 1e-6
+#   statistic             -- medians/percentiles/variance ratios: 1e-6
+#   resampled_energy_mha  -- fixed seed+shots, SHIPPED reference: 1e-9 mHa
+#   count                 -- counts and fractions: exact
+#   rebuilt_reference      -- requires an independently rebuilt reference;
+#                             NOT reproducible to the classes above by
+#                             construction (see verification/TASK_A_FINDING4.md).
+#                             Tolerance is the *observed spread* from Task A,
+#                             not a numeric epsilon.
+#
+# tier: 0 = raw per-evaluation CSV stat: 1 = re-derived from cached
+# reference/npz: 2 = re-sampling spot-check: 3 = cold-start / narrative,
+# not independently re-verifiable by tiers 0-2.
+
+# ============================================================ ABSTRACT ====
+- id: abs_factor_of_eight
+  value: 8
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "ratio of N2's 149-random-layout max/min err_sub_mHa (173.23/21.65)"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_between_within_ratio_n2
+  value: 27.2
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "5-seed between/within variance ratio, N2 random layouts"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_between_within_ratio_h10
+  value: 278.2
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "between/within variance ratio across all orderings, 2 seeds each"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_rho_capture_error_min
+  value: -0.88
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "lower bound of the -0.88 to -0.98 range quoted for capture-error rho across 21 chains"
+  tolerance: correlation
+  tier: 0
+
+- id: abs_rho_capture_error_max
+  value: -0.98
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "upper-magnitude bound of the -0.88 to -0.98 range (H10 50-layout rho=-0.983 rounds to this)"
+  tolerance: correlation
+  tier: 0
+
+- id: abs_ordering_range_mha
+  value: 286
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "max-min err_mHa across 50 random same-spin orderings at H10, default anchors"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_anchor_range_mha
+  value: 234
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "max-min err_mHa across all 120 anchor triples, H10 identity chain"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_shortlist_median_regret
+  value: 0.002
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "S0 best-of-top-5 normalised regret, median across 12 held-out chains"
+  tolerance: statistic
+  tier: 0
+
+- id: abs_shortlist_p90_regret
+  value: 0.002
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "S0 best-of-top-5 normalised regret, 90th percentile across 12 held-out chains"
+  tolerance: statistic
+  tier: 0
+
+# ==================================================== PROBLEM STATEMENT ====
+- id: prob_retained_samespin_10
+  value: 19
+  units: count
+  source: src/sqd_ordering/mask.py
+  computation: "same-spin pairs retained by the heavy-hex mask at Norb=10, out of 55"
+  tolerance: count
+  tier: 1
+
+- id: prob_total_pairs_10
+  value: 55
+  units: count
+  source: src/sqd_ordering/mask.py
+  computation: "C(10,2)=45 off-diagonal pairs + 10 diagonal = total possible same/opp-spin pair slots per repetition"
+  tolerance: count
+  tier: 1
+
+- id: prob_retained_oppspin_10
+  value: 3
+  units: count
+  source: src/sqd_ordering/mask.py
+  computation: "opposite-spin on-site anchors retained at Norb=10 (p mod 4 == 0: p=0,4,8)"
+  tolerance: count
+  tier: 1
+
+- id: prob_retained_samespin_frac_36
+  value: 5.6
+  units: percent
+  source: src/sqd_ordering/mask.py
+  computation: "fraction of same-spin pairs retained at Norb=36 (nearest-neighbour + diagonal / total pairs)"
+  tolerance: statistic
+  tier: 1
+
+# ============================================================ SYSTEMS =====
+- id: sys_n2_ci_dim
+  value: 14400
+  units: count
+  source: cache/canonical/partA_reference.npz
+  computation: "C(10,3)^2 CI dimension, N2 CAS(6,10)"
+  tolerance: count
+  tier: 1
+
+- id: sys_h10_ci_dim
+  value: 63504
+  units: count
+  source: cache/h10_R1.6/reference.npz
+  computation: "C(10,5)^2 CI dimension, H10 CAS(10,10)"
+  tolerance: count
+  tier: 1
+
+- id: sys_cr2_ci_dim
+  value: 853776
+  units: count
+  source: cache/tm_transfer/reference.npz
+  computation: "C(12,6)^2 CI dimension, Cr2 CAS(12,12)"
+  tolerance: count
+  tier: 1
+
+- id: sys_n2_dets_per_sector
+  value: 15
+  units: count
+  source: outputs/unified/results.csv
+  computation: "determinant budget per spin sector, N2"
+  tolerance: count
+  tier: 0
+
+- id: sys_h10_dets_per_sector
+  value: 15
+  units: count
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "determinant budget per spin sector, H10"
+  tolerance: count
+  tier: 0
+
+- id: sys_cr2_dets_per_sector
+  value: 55
+  units: count
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "determinant budget per spin sector, Cr2 (chosen to match H10's subspace fraction)"
+  tolerance: count
+  tier: 0
+
+- id: sys_n2_subspace_frac
+  value: 1.56
+  units: percent
+  source: outputs/unified/results.csv
+  computation: "225/14400, N2 subspace fraction of full CI"
+  tolerance: statistic
+  tier: 0
+
+- id: sys_h10_subspace_frac
+  value: 0.354
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "225/63504, H10 subspace fraction of full CI"
+  tolerance: statistic
+  tier: 0
+
+- id: sys_cr2_subspace_frac
+  value: 0.354
+  units: percent
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "3025/853776, Cr2 subspace fraction of full CI, chosen to match H10"
+  tolerance: statistic
+  tier: 0
+
+- id: sys_n2_capture_ceiling
+  value: 0.9866
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "ideal capture at N2's budget (oracle triple selection)"
+  tolerance: statistic
+  tier: 1
+
+- id: sys_h10_capture_ceiling
+  value: 0.7554
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "ideal capture at H10's budget"
+  tolerance: statistic
+  tier: 1
+
+- id: sys_cr2_capture_ceiling
+  value: 0.881
+  units: dimensionless
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "ideal capture at Cr2's budget"
+  tolerance: statistic
+  tier: 1
+
+- id: sys_h10_r18_ccsd_divergence
+  value: "oscillates -0.4 to -0.9 Ha over 300 cycles"
+  units: Ha
+  source: "none found -- narrative claim about an abandoned design point"
+  computation: "CCSD E_corr non-convergence at H10 R=1.8; superseded by R=1.6"
+  tolerance: rebuilt_reference
+  tier: 3
+
+- id: sys_h10_r16_ccsd_cycles
+  value: 48
+  units: count
+  source: cache/h10_R1.6/metadata.json
+  computation: "cc_cycles field"
+  tolerance: count
+  tier: 1
+
+- id: sys_cr2_ccsd_cycles
+  value: 26
+  units: count
+  source: cache/tm_transfer/metadata.json
+  computation: "cc_cycles field"
+  tolerance: count
+  tier: 1
+
+- id: sys_cr2_ecorr
+  value: -0.610
+  units: Ha
+  source: cache/tm_transfer/metadata.json
+  computation: "E_corr field"
+  tolerance: exact_energy_ha
+  tier: 1
+
+# =========================================================== PIPELINE =====
+- id: pipe_low_rank_error
+  value: 160
+  units: mHa
+  source: "none found -- one-off n_reps=2 comparison, not in any experiment CSV"
+  computation: "H10 error at n_reps=2 vs CCSD, quoted to justify n_reps=None"
+  tolerance: rebuilt_reference
+  tier: 3
+
+- id: pipe_full_rank_error
+  value: 1.2
+  units: mHa
+  source: "none found -- same one-off comparison as pipe_low_rank_error"
+  computation: "H10 error at n_reps=None (full rank) vs CCSD"
+  tolerance: rebuilt_reference
+  tier: 3
+
+- id: repro_fcidump_energy_spread
+  value: "8-17"
+  units: mHa
+  source: "notes/PROGRESS.md (narrative); see also Amendment 3 for the same phenomenon characterised precisely"
+  computation: "energy spread from thread-dependent FCIDUMP noise across independent process runs, pre-pinning"
+  tolerance: rebuilt_reference
+  tier: 3
+
+- id: repro_w16_w15_n2
+  value: 0.504
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "analytic marginal ratio at the selection boundary, N2"
+  tolerance: statistic
+  tier: 1
+
+- id: repro_w16_w15_h10
+  value: 0.989
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "analytic marginal ratio at the selection boundary, H10 -- see verification/TASK_A_FINDING4.md A1 for the empirical top-20 dump confirming near-degeneracy"
+  tolerance: statistic
+  tier: 1
+
+- id: repro_seed_scatter_low_shots
+  value: 43
+  units: mHa
+  source: "none found -- historical 5e5-shot run, superseded by the 2e6-shot protocol"
+  computation: "H10 seed-to-seed scatter at 5e5 shots"
+  tolerance: rebuilt_reference
+  tier: 3
+
+- id: repro_bit_identical_5seed_2e6shots
+  value: true
+  units: exact_bit
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "all 5 seeds at 2e6 shots return bit-identical energies and determinant sets"
+  tolerance: exact_bit
+  tier: 2
+
+# =========================================================== VALIDATION ===
+- id: valid_group_benchmark
+  value: -109.0483526946501
+  units: Ha
+  source: sbd/data/n2/fcidump.txt
+  computation: "sbd's own bundled N2 benchmark, 1387 dets at 1e-4 threshold"
+  tolerance: exact_energy_ha
+  tier: 2
+
+- id: valid_group_benchmark_published
+  value: -109.04835269
+  units: Ha
+  source: "external -- published reference value"
+  computation: "twelve-significant-figure agreement with valid_group_benchmark"
+  tolerance: exact_energy_ha
+  tier: 2
+
+- id: valid_h2_rhf
+  value: -1.116759307396
+  units: Ha
+  source: "sbd validation logs (archive/legacy_outputs, see archive/README.md)"
+  computation: "H2/STO-3G RHF from HF-only determinant file"
+  tolerance: exact_energy_ha
+  tier: 2
+
+- id: valid_h2_fci
+  value: -1.137283834489
+  units: Ha
+  source: "sbd validation logs (archive/legacy_outputs, see archive/README.md)"
+  computation: "H2/STO-3G FCI from the full sampled determinant set"
+  tolerance: exact_energy_ha
+  tier: 2
+
+- id: valid_unmasked_invariance_energy
+  value: -108.823644563978
+  units: Ha
+  source: experiments/outputs/preflight/invariance_results.csv
+  computation: "4 orderings, N2, mask disabled -- must be bit-identical"
+  tolerance: exact_bit
+  tier: 2
+
+- id: valid_unmasked_invariance_jaccard
+  value: 1.0
+  units: dimensionless
+  source: experiments/outputs/preflight/invariance_results.csv
+  computation: "Jaccard overlap of selected determinant sets across the 4 orderings"
+  tolerance: exact_bit
+  tier: 0
+
+- id: valid_two_implementations_agree
+  value: 0.0
+  units: Ha
+  source: experiments/outputs/preflight/crosscheck_operator_level.csv
+  computation: "entrywise diag-Coulomb / orbital-rotation comparison, mechanism A vs B -- exact floating-point zero"
+  tolerance: exact_bit
+  tier: 1
+
+- id: valid_localised_canonical_casci_diff
+  value: 8.5e-14
+  units: Ha
+  source: cache/h10_R1.6/reference.npz
+  computation: "localised vs canonical CASCI energy difference"
+  tolerance: exact_energy_ha
+  tier: 1
+
+- id: valid_localised_canonical_ecorr_diff
+  value: 2.3e-15
+  units: Ha
+  source: cache/h10_R1.6/reference.npz
+  computation: "E_corr reconstructed from rotated amplitudes vs rotated integrals, vs canonical"
+  tolerance: exact_energy_ha
+  tier: 1
+
+# ============================================= 3.1 LAYOUT CHANGES ANSWER ===
+- id: r1_n2_oracle_err
+  value: 24.27
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "err_sub_mHa, max_captured_ORACLE ordering, N2"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_n2_oracle_pctile
+  value: 0.7
+  units: percent
+  source: outputs/unified/results.csv
+  computation: "percentile of oracle ordering within the 149 random layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_oracle_captured
+  value: 0.9831
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "captured weight, oracle ordering, N2"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_oracle_retainedJ
+  value: 0.2661
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "retained_J, oracle ordering, N2"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_identity_err
+  value: 31.87
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "err_sub_mHa, identity ordering, N2"
+  tolerance: resampled_energy_mha
+  tier: 2
+- id: r1_n2_identity_pctile
+  value: 4.7
+  units: percent
+  source: outputs/unified/results.csv
+  computation: "percentile of identity ordering within the 149 random layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_identity_captured
+  value: 0.9789
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "captured weight, identity ordering, N2"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_identity_retainedJ
+  value: 0.2874
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "retained_J, identity ordering, N2"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_maxretJ_err
+  value: 44.32
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "err_sub_mHa, max-retained-J ordering, N2"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_n2_maxretJ_pctile
+  value: 22.1
+  units: percent
+  source: outputs/unified/results.csv
+  computation: "percentile of max-retained-J ordering"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_maxretJ_captured
+  value: 0.9668
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "captured weight, max-retained-J ordering"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_maxretJ_retainedJ
+  value: 0.3195
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "retained_J, max-retained-J ordering"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_random_best
+  value: 21.65
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "min err_sub_mHa across 149 random N2 layouts"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_n2_random_median
+  value: 49.22
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "median err_sub_mHa across 149 random N2 layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_random_worst
+  value: 173.23
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "max err_sub_mHa across 149 random N2 layouts"
+  tolerance: resampled_energy_mha
+  tier: 0
+
+- id: r1_h10_s2max_err
+  value: 192.12
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, s2_max ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_s2max_pctile
+  value: 84
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of s2_max within 50 random layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_physrev_err
+  value: 218.64
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, physical_reverse ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_physrev_pctile
+  value: 80
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of physical_reverse"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_s1max_err
+  value: 219.90
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, s1_max ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_s1max_pctile
+  value: 78
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of s1_max"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_retjmax_err
+  value: 295.82
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, retainedJ_max ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_retjmax_pctile
+  value: 26
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of retainedJ_max"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_reverse_err
+  value: 295.93
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, reverse ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_reverse_pctile
+  value: 26
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of reverse"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_identity_err
+  value: 300.32
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, identity ordering -- see verification/TASK_A_FINDING4.md, only reproducible from the SHIPPED cached reference"
+  tolerance: rebuilt_reference
+  tier: 2
+- id: r1_h10_identity_pctile
+  value: 26
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of identity"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_physical_err
+  value: 389.71
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "mean err_mHa, physical ordering"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_physical_pctile
+  value: 2
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "percentile of physical"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_random_best
+  value: 168.67
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "min mean err_mHa across 50 random H10 layouts"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_random_median
+  value: 263.19
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "median mean err_mHa across 50 random H10 layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_h10_random_worst
+  value: 454.89
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "max mean err_mHa across 50 random H10 layouts"
+  tolerance: resampled_energy_mha
+  tier: 0
+
+- id: r1_n2_p5_p95_ratio
+  value: 2.71
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "ratio of 95th to 5th percentile err_sub_mHa across 149 random N2 layouts"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_rho_excl_outlier
+  value: -0.877
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "capture-error Spearman rho excluding the worst-captured layout"
+  tolerance: correlation
+  tier: 0
+- id: r1_h10_phys_physrev_gap
+  value: 171.07
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "physical err_mHa - physical_reverse err_mHa"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: r1_h10_phys_physrev_gap_frac
+  value: 60
+  units: percent
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "phys/physrev gap as fraction of the random-layout spread (286.23 mHa)"
+  tolerance: statistic
+  tier: 0
+- id: r1_n2_collapse_dim
+  value: 81
+  units: count
+  source: outputs/unified/results.csv
+  computation: "subspace dimension of the one N2 random layout with <15 unique dets/sector"
+  tolerance: count
+  tier: 0
+
+# ============================================= 3.2 MECHANISM: CAPTURE =====
+- id: mech_rho_n2
+  value: -0.880
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "Spearman rho(capture, err_sub_mHa), 149 random N2 layouts"
+  tolerance: correlation
+  tier: 0
+- id: mech_p_n2
+  value: 3e-49
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "p-value for mech_rho_n2"
+  tolerance: correlation
+  tier: 0
+- id: mech_rho_h10
+  value: -0.983
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "Spearman rho(capture, err_mHa), 50 random H10 layouts"
+  tolerance: correlation
+  tier: 0
+- id: mech_p_h10
+  value: 3.6e-37
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "p-value for mech_rho_h10"
+  tolerance: correlation
+  tier: 0
+- id: mech_rho_cr2
+  value: -0.97
+  units: dimensionless
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "Spearman rho(capture, err_mHa), Cr2"
+  tolerance: correlation
+  tier: 0
+- id: mech_heldout_holds
+  value: "12/12"
+  units: count
+  source: experiments/outputs/chain_aware/step2_b34_links.csv
+  computation: "held-out chains where capture-error correlation holds correct-sign"
+  tolerance: count
+  tier: 0
+- id: mech_n_chains_total
+  value: 21
+  units: count
+  source: "aggregate across outputs/unified, h10_baseline_R1.6, chain_aware, chain_aware_v2/v3, tm_transfer"
+  computation: "18 chains (chain_aware_v2 ALL18) + 3 Cr2 chains (tm_transfer)"
+  tolerance: count
+  tier: 0
+
+# ======================================== 3.3 NO SCALAR PREDICTOR WORKS ===
+- id: null_s1amp_rho
+  value: -0.032
+  units: dimensionless
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "rho(s1_amp, err_mHa), 50 H10 layouts"
+  tolerance: correlation
+  tier: 0
+- id: null_s2_rho
+  value: 0.091
+  units: dimensionless
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "rho(s2, err_mHa), 50 H10 layouts"
+  tolerance: correlation
+  tier: 0
+- id: null_retainedJ_rho
+  value: 0.001
+  units: dimensionless
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "rho(retained_J, err_mHa), 50 H10 layouts"
+  tolerance: correlation
+  tier: 0
+- id: null_strongest_rho
+  value: -0.377
+  units: dimensionless
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "strongest single score variant's rho against err_mHa"
+  tolerance: correlation
+  tier: 0
+- id: null_strongest_p
+  value: 7.0e-3
+  units: dimensionless
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "p-value for null_strongest_rho"
+  tolerance: correlation
+  tier: 0
+- id: null_random_baseline_regret
+  value: 95.01
+  units: mHa
+  source: experiments/outputs/score_audit_R1.6/all_scores.csv
+  computation: "random-selection baseline regret, H10"
+  tolerance: statistic
+  tier: 0
+- id: null_samespin_rho
+  value: 0.212
+  units: dimensionless
+  source: experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv
+  computation: "rho(retained_J same-spin component, err_mHa)"
+  tolerance: correlation
+  tier: 0
+- id: null_oppspin_rho
+  value: -0.375
+  units: dimensionless
+  source: experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv
+  computation: "rho(retained_J opposite-spin component, err_mHa)"
+  tolerance: correlation
+  tier: 0
+- id: null_oppspin_p
+  value: 7.3e-3
+  units: dimensionless
+  source: experiments/outputs/anchor_reanalysis/anchor_reanalysis.csv
+  computation: "p-value for null_oppspin_rho"
+  tolerance: correlation
+  tier: 0
+- id: null_cisd_overlap
+  value: 0.973
+  units: dimensionless
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "CISD surrogate marginal overlap with exact, N2"
+  tolerance: statistic
+  tier: 0
+- id: null_cisd_rho
+  value: -0.43
+  units: dimensionless
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "rho(CISD surrogate, err_mHa), N2"
+  tolerance: correlation
+  tier: 0
+- id: null_fiedler_pctile
+  value: 27
+  units: percent
+  source: "none found -- one-off DMRG-imported ordering, not in a tracked CSV"
+  computation: "Fiedler ordering percentile, N2"
+  tolerance: rebuilt_reference
+  tier: 3
+- id: null_entangle_pctile
+  value: 69
+  units: percent
+  source: "none found -- one-off entanglement-weighted variant"
+  computation: "entanglement-weighted Fiedler variant percentile, N2"
+  tolerance: rebuilt_reference
+  tier: 3
+
+# ============================================ 3.4 TWO SEPARABLE LEVERS ====
+- id: lever_reversal_verified
+  value: "57/57"
+  units: count
+  source: "src/sqd_ordering/mask.py (symbolic proof) + tests/test_mask_equivalence.py"
+  computation: "baseline permutations for which same-spin mask invariance under reversal was verified"
+  tolerance: count
+  tier: 1
+- id: lever_offset_sweep_range
+  value: 171.08
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/b1_offset_sweep.csv
+  computation: "err_mHa range across the 4 anchor offsets at fixed H10 physical chain"
+  tolerance: statistic
+  tier: 0
+- id: lever_offset_reversal_agreement
+  value: 0.01
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/b1_offset_sweep.csv
+  computation: "|171.08 - 171.07|, offset-sweep range vs reversal gap"
+  tolerance: statistic
+  tier: 0
+- id: lever_samespin_searchspace
+  value: 3628800
+  units: count
+  source: "combinatorial: 10!"
+  computation: "same-spin ordering search space size at Norb=10"
+  tolerance: count
+  tier: 0
+- id: lever_anchor_searchspace
+  value: 120
+  units: count
+  source: "combinatorial: C(10,3)"
+  computation: "anchor selection search space size at Norb=10"
+  tolerance: count
+  tier: 0
+
+# =========================================== 3.5 ANCHOR COMPRESSION =======
+- id: comp_rand030_default
+  value: 168.67
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand030"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand030_best
+  value: 180.81
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand030 (default triple not in the 40 sampled -- understates achievable improvement, see report's own caveat)"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand037_default
+  value: 175.60
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand037"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand037_best
+  value: 170.47
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand037"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand007_default
+  value: 261.60
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand007"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand007_best
+  value: 184.33
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand007"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand032_default
+  value: 264.78
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand032"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand032_best
+  value: 172.97
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand032"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_identity_default
+  value: 300.32
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, identity -- see verification/TASK_A_FINDING4.md, rebuilt-reference caveat applies"
+  tolerance: rebuilt_reference
+  tier: 2
+- id: comp_identity_best
+  value: 230.31
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, identity"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand047_default
+  value: 383.16
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand047"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand047_best
+  value: 181.38
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand047"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_physical_default
+  value: 389.71
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, physical"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_physical_best
+  value: 175.17
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, physical"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand029_default
+  value: 454.89
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "baseline column, rand029"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_rand029_best
+  value: 186.74
+  units: mHa
+  source: experiments/outputs/g1_lite/g1_summary.csv
+  computation: "best_of_40 column, rand029"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: comp_factor
+  value: 3.09
+  units: dimensionless
+  source: verification/task_c_compression_factor.py
+  computation: "default-spread / optimised-spread across 20 chains, default triple guaranteed in the candidate set -- verified independently this session (3.0907x), matches the presentation exactly; the report's own prose promises this figure but never states it"
+  tolerance: statistic
+  tier: 0
+- id: comp_baseline_postopt_rho
+  value: 0.405
+  units: dimensionless
+  source: experiments/outputs/g1_lite/g1_all.csv
+  computation: "rho(baseline err, post-optimisation err), 8-chain design"
+  tolerance: correlation
+  tier: 0
+- id: comp_baseline_postopt_p
+  value: 0.320
+  units: dimensionless
+  source: experiments/outputs/g1_lite/g1_all.csv
+  computation: "p-value for comp_baseline_postopt_rho"
+  tolerance: correlation
+  tier: 0
+
+# ======================================= 3.6 ANSATZ-LEVEL ANCHOR EFFECT ===
+- id: ansatz_h10_identity_range
+  value: 135.03
+  units: mHa
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "err_lucj range across 120 anchor triples, H10 identity"
+  tolerance: statistic
+  tier: 0
+- id: ansatz_sqd_range_comparison
+  value: 234.10
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "SQD-level range for the same 120 triples, for the ratio"
+  tolerance: statistic
+  tier: 0
+- id: ansatz_transmission_ratio
+  value: 0.577
+  units: dimensionless
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "135.03 / 234.10"
+  tolerance: statistic
+  tier: 0
+- id: ansatz_worse_than_control_count
+  value: "5/120"
+  units: count
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "triples with worse variational energy than the no-alpha-beta control"
+  tolerance: count
+  tier: 0
+- id: ansatz_worse_than_control_pct
+  value: 4.2
+  units: percent
+  source: experiments/outputs/lucj_control/identity_120_lucj.csv
+  computation: "5/120 as a percentage"
+  tolerance: statistic
+  tier: 0
+- id: ansatz_sqd_worse_than_floor_pct
+  value: 4.0
+  units: percent
+  source: experiments/outputs/floor_generalization/f1c_floor_vs_default_50random.csv
+  computation: "SQD-level worse-than-floor fraction, for comparison to ansatz_worse_than_control_pct"
+  tolerance: statistic
+  tier: 0
+- id: ansatz_rho_lucj_sqd_identity
+  value: 0.527
+  units: dimensionless
+  source: experiments/outputs/transmission/all_evaluations.csv
+  computation: "rho(err_lucj, err_sqd), H10 identity, all 120 triples"
+  tolerance: correlation
+  tier: 0
+- id: ansatz_rho_lucj_sqd_identity_excl_floor
+  value: 0.475
+  units: dimensionless
+  source: experiments/outputs/transmission/all_evaluations.csv
+  computation: "same, excluding the 17 degenerate-floor triples"
+  tolerance: correlation
+  tier: 0
+- id: ansatz_rho_lucj_sqd_identity_excl_floor_p
+  value: 4.1e-7
+  units: dimensionless
+  source: experiments/outputs/transmission/all_evaluations.csv
+  computation: "p-value for ansatz_rho_lucj_sqd_identity_excl_floor"
+  tolerance: correlation
+  tier: 0
+
+# ==================================================== 3.7 FLOOR EFFECTS ===
+- id: floor_h10_identity_count
+  value: 17
+  units: count
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "triples at H10 identity returning the identical no-ab floor error"
+  tolerance: count
+  tier: 0
+- id: floor_h10_identity_value
+  value: 458.70
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "shared error value for the 17 degenerate triples"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_noab_control
+  value: 458.6997
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "direct no-alpha-beta control, H10 identity"
+  tolerance: resampled_energy_mha
+  tier: 2
+- id: floor_mean_jab_floor_triples
+  value: 1.30
+  units: dimensionless
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "mean |J_ab| for the floor triples"
+  tolerance: statistic
+  tier: 0
+- id: floor_mean_jab_best_ten
+  value: 8.03
+  units: dimensionless
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "mean |J_ab| for the best 10 triples"
+  tolerance: statistic
+  tier: 0
+- id: floor_identity_floor
+  value: 458.70
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "floor row, identity chain (duplicate of floor_h10_identity_value)"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_identity_default
+  value: 300.32
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "default-anchor row, identity chain -- rebuilt-reference caveat applies"
+  tolerance: rebuilt_reference
+  tier: 2
+- id: floor_identity_best
+  value: 224.60
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "best-anchor row, identity chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_identity_worse_than_floor
+  value: "0/120"
+  units: count
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "triples worse than floor, identity chain"
+  tolerance: count
+  tier: 0
+- id: floor_rand007_floor
+  value: 372.86
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "floor row, rand007 chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_rand007_default
+  value: 261.60
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "default-anchor row, rand007 chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_rand007_best
+  value: 175.54
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "best-anchor row, rand007 chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_rand007_worse_than_floor
+  value: "3/40"
+  units: count
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "triples worse than floor, rand007 chain"
+  tolerance: count
+  tier: 0
+- id: floor_physical_floor
+  value: 379.25
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "floor row, physical chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_physical_default
+  value: 389.71
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "default-anchor row, physical chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_physical_best
+  value: 172.15
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "best-anchor row, physical chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_physical_worse_than_floor
+  value: "1/40"
+  units: count
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "triples worse than floor, physical chain"
+  tolerance: count
+  tier: 0
+- id: floor_physical_default_vs_floor_gap
+  value: 10.46
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1b_named_orderings.csv
+  computation: "389.71 - 379.25"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_50random_worse_than_floor_count
+  value: "2/50"
+  units: count
+  source: experiments/outputs/floor_generalization/f1c_floor_vs_default_50random.csv
+  computation: "H10 random layouts with default-anchor error worse than own floor"
+  tolerance: count
+  tier: 0
+- id: floor_50random_worse_than_floor_mean_penalty
+  value: 33.75
+  units: mHa
+  source: experiments/outputs/floor_generalization/f1c_floor_vs_default_50random.csv
+  computation: "mean penalty for the 2 chains above"
+  tolerance: statistic
+  tier: 0
+- id: floor_rho_baseline_gap
+  value: -0.359
+  units: dimensionless
+  source: experiments/outputs/floor_generalization/f1c_floor_vs_default_50random.csv
+  computation: "rho(baseline error, floor-default gap)"
+  tolerance: correlation
+  tier: 0
+- id: floor_rho_baseline_gap_p
+  value: 0.010
+  units: dimensionless
+  source: experiments/outputs/floor_generalization/f1c_floor_vs_default_50random.csv
+  computation: "p-value for floor_rho_baseline_gap"
+  tolerance: correlation
+  tier: 0
+- id: floor_n2_anomaly_pct
+  value: 20
+  units: percent
+  source: experiments/outputs/n2_anchor_axis/identity_120.csv
+  computation: "fraction of triples worse than floor at the anomalous N2 chain"
+  tolerance: statistic
+  tier: 0
+- id: floor_n2_anomaly_floor
+  value: 49.69
+  units: mHa
+  source: experiments/outputs/n2_anchor_axis/identity_120.csv
+  computation: "floor value at the anomalous N2 chain"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: floor_n2_other_floor
+  value: 114.00
+  units: mHa
+  source: experiments/outputs/n2_anchor_axis/reverse_median_40.csv
+  computation: "typical floor value elsewhere on N2"
+  tolerance: resampled_energy_mha
+  tier: 0
+
+# =========================================================== 3.8 TRANSFER =
+- id: transfer_h10_anchor_range
+  value: 234.10
+  units: mHa
+  source: experiments/outputs/anchor_decomposition_R1.6/c1_all120_identity.csv
+  computation: "duplicate of abs_anchor_range_mha, tabulated per-system"
+  tolerance: statistic
+  tier: 0
+- id: transfer_n2_anchor_range
+  value: 89.73
+  units: mHa
+  source: experiments/outputs/n2_anchor_axis/identity_120.csv
+  computation: "anchor range at N2 identity, 120 triples"
+  tolerance: statistic
+  tier: 0
+- id: transfer_h10_headroom
+  value: 0.1620
+  units: dimensionless
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "capture ceiling - mean achieved capture, H10"
+  tolerance: statistic
+  tier: 0
+- id: transfer_n2_headroom
+  value: 0.0352
+  units: dimensionless
+  source: outputs/unified/results.csv
+  computation: "capture ceiling - mean achieved capture, N2"
+  tolerance: statistic
+  tier: 0
+- id: transfer_h10_range_per_headroom
+  value: 1445
+  units: mHa
+  source: experiments/outputs/h10_baseline_R1.6/h10_baseline_results.csv
+  computation: "234.10 / 0.1620"
+  tolerance: statistic
+  tier: 0
+- id: transfer_n2_range_per_headroom
+  value: 2550
+  units: mHa
+  source: outputs/unified/results.csv
+  computation: "89.73 / 0.0352"
+  tolerance: statistic
+  tier: 0
+- id: transfer_cr2_range_per_headroom
+  value: 1677
+  units: mHa
+  source: experiments/outputs/tm_transfer/README.md
+  computation: "headroom-normalised anchor range, Cr2"
+  tolerance: statistic
+  tier: 0
+- id: transfer_h10_rho_s0_lucj
+  value: -0.850
+  units: dimensionless
+  source: experiments/outputs/transmission/t1_link_breakdown.csv
+  computation: "rho(S0, err_lucj), H10"
+  tolerance: correlation
+  tier: 0
+- id: transfer_n2_rho_s0_lucj
+  value: -0.965
+  units: dimensionless
+  source: experiments/outputs/transmission/t1_link_breakdown.csv
+  computation: "rho(S0, err_lucj), N2"
+  tolerance: correlation
+  tier: 0
+- id: transfer_cr2_rho_s0_lucj
+  value: "-0.96 to -0.97"
+  units: dimensionless
+  source: experiments/outputs/tm_transfer/README.md
+  computation: "rho(S0, err_lucj), Cr2"
+  tolerance: correlation
+  tier: 0
+- id: transfer_cr2_identity_reverse_bitidentical
+  value: true
+  units: exact_bit
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "Cr2 identity vs reverse chain, must be bit-identical (reversal invariance)"
+  tolerance: exact_bit
+  tier: 0
+
+# ======================================================== 3.9 TRANSMISSION
+- id: transmission_link2_range_min
+  value: -0.88
+  units: dimensionless
+  source: experiments/outputs/transmission/t2_diagnostics.csv
+  computation: "lower bound of link-2 (capture->SQD) rho range across 6 chains x 2 systems"
+  tolerance: correlation
+  tier: 0
+- id: transmission_link2_range_max
+  value: -0.96
+  units: dimensionless
+  source: experiments/outputs/transmission/t2_diagnostics.csv
+  computation: "upper-magnitude bound of link-2 rho range"
+  tolerance: correlation
+  tier: 0
+- id: transmission_best_diagnostic_sig_count
+  value: "2/6"
+  units: count
+  source: experiments/outputs/transmission/t2_diagnostics.csv
+  computation: "chains at which the best sampled-distribution diagnostic is significant"
+  tolerance: count
+  tier: 0
+
+# ============================================ 3.11 CHAIN-AWARE ATTEMPTS ===
+- id: chainaware_t1_worst_rho
+  value: -0.486
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "T1 worst-case rho(score, captured) across 18 chains"
+  tolerance: correlation
+  tier: 0
+- id: chainaware_t2_worst_rho
+  value: -0.644
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "T2 worst-case rho(score, captured) across 18 chains"
+  tolerance: correlation
+  tier: 0
+- id: chainaware_s0_worst_rho
+  value: 0.361
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "S0 worst-case rho(score, captured) across 18 chains"
+  tolerance: correlation
+  tier: 0
+- id: chainaware_t1_wrongsign_count
+  value: "14/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "chains where T1 has the wrong sign"
+  tolerance: count
+  tier: 0
+- id: chainaware_t2_wrongsign_count
+  value: "15/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "chains where T2 has the wrong sign"
+  tolerance: count
+  tier: 0
+- id: chainaware_sint_median_regret
+  value: 0.036
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "S_int best-of-top-5 median regret, 12 held-out chains"
+  tolerance: statistic
+  tier: 0
+
+# ========================================== 3.12 HELD-OUT 18-CHAIN TABLE ==
+- id: heldout_s0_correct_sign
+  value: "18/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "rho(S0,C) correct sign count across 18 chains"
+  tolerance: count
+  tier: 0
+- id: heldout_s0_significant
+  value: "18/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "rho(S0,C) significant at p<0.05 count across 18 chains"
+  tolerance: count
+  tier: 0
+- id: heldout_s0_median_rho
+  value: 0.703
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "median rho(S0,C) across 18 chains"
+  tolerance: statistic
+  tier: 0
+- id: heldout_s0_worst_rho
+  value: 0.361
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "duplicate of chainaware_s0_worst_rho"
+  tolerance: statistic
+  tier: 0
+- id: heldout_s0_sqd_correct_sign
+  value: "18/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "rho(S0,err_SQD) correct sign count across 18 chains"
+  tolerance: count
+  tier: 0
+- id: heldout_argmax_median_regret
+  value: 0.347
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "median argmax normalised regret across 18 chains"
+  tolerance: statistic
+  tier: 0
+- id: heldout_argmax_exceeding_1
+  value: "1/18"
+  units: count
+  source: experiments/outputs/chain_aware_v2/comparison_table.csv
+  computation: "chains with argmax regret > 1.0 (newchain11)"
+  tolerance: count
+  tier: 0
+- id: heldout_capture_sqd_holds
+  value: "12/12"
+  units: count
+  source: experiments/outputs/chain_aware/step2_b34_links.csv
+  computation: "duplicate of mech_heldout_holds"
+  tolerance: count
+  tier: 0
+- id: heldout_newchain11_regret
+  value: 1.152
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2_distribution/newchain11_tie_analysis.csv
+  computation: "newchain11's argmax regret (S0's single failure)"
+  tolerance: statistic
+  tier: 0
+- id: heldout_newchain11_rho
+  value: 0.609
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v2/all_scores.csv
+  computation: "rho(S0,C) at newchain11 specifically -- correct sign, significant despite the argmax failure"
+  tolerance: correlation
+  tier: 0
+
+# ========================================== 3.13 SHORTLIST IS DEPLOYABLE ==
+- id: shortlist_s0_median
+  value: 0.002
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "duplicate of abs_shortlist_median_regret"
+  tolerance: statistic
+  tier: 0
+- id: shortlist_s0_p90
+  value: 0.002
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "duplicate of abs_shortlist_p90_regret"
+  tolerance: statistic
+  tier: 0
+- id: shortlist_random_median
+  value: 0.181
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "random best-of-5 median regret, 12 held-out chains"
+  tolerance: statistic
+  tier: 0
+- id: shortlist_random_p90
+  value: 0.621
+  units: dimensionless
+  source: experiments/outputs/chain_aware_v3/p2_shortlist.csv
+  computation: "random best-of-5 90th-percentile regret, 12 held-out chains"
+  tolerance: statistic
+  tier: 0
+
+# ==================================================== 3.14 CIRCUIT AUDIT ==
+- id: resource_h10_identity_derr
+  value: -75.72
+  units: mHa
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "H10 identity default->best error change"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: resource_h10_identity_d2q
+  value: -66.6
+  units: count
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "H10 identity default->best 2Q gate change"
+  tolerance: count
+  tier: 0
+- id: resource_h10_identity_gpm
+  value: -0.88
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "gates per mHa recovered, H10 identity"
+  tolerance: statistic
+  tier: 0
+- id: resource_h10_physical_derr
+  value: -217.56
+  units: mHa
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "H10 physical default->best error change"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: resource_h10_physical_d2q
+  value: 336.6
+  units: count
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "H10 physical default->best 2Q gate change"
+  tolerance: count
+  tier: 0
+- id: resource_h10_physical_gpm
+  value: 1.55
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "gates per mHa recovered, H10 physical -- the only positive-cost pair"
+  tolerance: statistic
+  tier: 0
+- id: resource_n2_identity_derr
+  value: -7.60
+  units: mHa
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "N2 identity default->best error change"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: resource_n2_identity_d2q
+  value: -880.8
+  units: count
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "N2 identity default->best 2Q gate change"
+  tolerance: count
+  tier: 0
+- id: resource_n2_identity_gpm
+  value: -115.89
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "gates per mHa recovered, N2 identity"
+  tolerance: statistic
+  tier: 0
+- id: resource_cr2_identity_derr
+  value: -38.84
+  units: mHa
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "Cr2 identity default->best error change"
+  tolerance: resampled_energy_mha
+  tier: 0
+- id: resource_cr2_identity_d2q
+  value: -2823.4
+  units: count
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "Cr2 identity default->best 2Q gate change"
+  tolerance: count
+  tier: 0
+- id: resource_cr2_identity_gpm
+  value: -72.69
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/v3_table.csv
+  computation: "gates per mHa recovered, Cr2 identity"
+  tolerance: statistic
+  tier: 0
+- id: resource_anchor_cv_2q
+  value: 5.1
+  units: percent
+  source: experiments/outputs/transpilation_audit/a1_by_triple.csv
+  computation: "CV of 2Q gate count across 120 anchor triples, H10 identity"
+  tolerance: statistic
+  tier: 0
+- id: resource_anchor_cv_depth
+  value: 11.6
+  units: percent
+  source: experiments/outputs/transpilation_audit/a1_by_triple.csv
+  computation: "CV of depth across 120 anchor triples"
+  tolerance: statistic
+  tier: 0
+- id: resource_anchor_cv_swap
+  value: 27.4
+  units: percent
+  source: experiments/outputs/transpilation_audit/a1_by_triple.csv
+  computation: "CV of SWAP count across 120 anchor triples"
+  tolerance: statistic
+  tier: 0
+- id: resource_samespin_cv_2q
+  value: 19.0
+  units: percent
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "CV of 2Q gate count across 20 same-spin chains"
+  tolerance: statistic
+  tier: 0
+- id: resource_samespin_cv_depth
+  value: 21.7
+  units: percent
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "CV of depth across 20 same-spin chains"
+  tolerance: statistic
+  tier: 0
+- id: resource_samespin_cv_swap
+  value: 37.5
+  units: percent
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "CV of SWAP count across 20 same-spin chains"
+  tolerance: statistic
+  tier: 0
+- id: resource_layout_vs_seed_ratio
+  value: 1.39
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/all_rows.csv
+  computation: "layout-variation sd / routing-seed-noise sd"
+  tolerance: statistic
+  tier: 0
+- id: resource_logical_cv
+  value: 0.27
+  units: percent
+  source: experiments/outputs/transpilation_audit/q1_logical_rows.csv
+  computation: "pre-routing (logical) 2Q gate count CV across 120 anchor triples"
+  tolerance: statistic
+  tier: 0
+- id: resource_rho_2q_s0
+  value: -0.709
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/a1_by_triple.csv
+  computation: "rho(2Q gates, S0), anchor axis"
+  tolerance: correlation
+  tier: 0
+- id: resource_rho_2q_err
+  value: 0.608
+  units: dimensionless
+  source: experiments/outputs/transpilation_audit/a1_by_triple.csv
+  computation: "rho(2Q gates, err_SQD), anchor axis"
+  tolerance: correlation
+  tier: 0
+- id: resource_physical_2q
+  value: 26500
+  units: count
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "approximate 2Q gate count, physical chain"
+  tolerance: count
+  tier: 0
+- id: resource_physical_swaps
+  value: 5284
+  units: count
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "SWAP count, physical chain"
+  tolerance: count
+  tier: 0
+- id: resource_identity_2q
+  value: 12800
+  units: count
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "approximate 2Q gate count, identity chain"
+  tolerance: count
+  tier: 0
+- id: resource_identity_swaps
+  value: 650
+  units: count
+  source: experiments/outputs/transpilation_audit/a2_by_chain.csv
+  computation: "SWAP count, identity chain"
+  tolerance: count
+  tier: 0
+
+# ================================================ DEPLOYMENT AND SCALING ==
+- id: scale_anchor_space_20
+  value: 15504
+  units: count
+  source: "combinatorial: C(20,5)"
+  computation: "anchor search space at Norb=20"
+  tolerance: count
+  tier: 0
+- id: scale_anchor_space_36
+  value: 9.4e7
+  units: count
+  source: "combinatorial: C(36,9)"
+  computation: "anchor search space at Norb=36"
+  tolerance: count
+  tier: 0
+- id: scale_perm_space_36
+  value: 3.7e41
+  units: count
+  source: "combinatorial: 36!"
+  computation: "permutation search space at Norb=36"
+  tolerance: count
+  tier: 0
+- id: scale_cr2_qubits
+  value: 24
+  units: count
+  source: experiments/outputs/tm_transfer/stage2_sqd.csv
+  computation: "Cr2 qubit count"
+  tolerance: count
+  tier: 0
+- id: scale_cr2_eval_time
+  value: 16
+  units: minutes
+  source: experiments/outputs/tm_transfer/README.md
+  computation: "wall time per Cr2 SQD evaluation"
+  tolerance: statistic
+  tier: 3
+- id: scale_cr2_aer_time
+  value: 962
+  units: seconds
+  source: experiments/outputs/tm_transfer/README.md
+  computation: "Aer statevector simulation time within one Cr2 evaluation"
+  tolerance: statistic
+  tier: 3
+
+# ============================================= REPRODUCIBILITY SECTION ====
+- id: correction_mask_omission_count
+  value: 10
+  units: count
+  source: notes/PROGRESS.md
+  computation: "diagonal same-spin entries omitted per repetition by the withdrawn mask implementation, out of 31"
+  tolerance: count
+  tier: 3
+- id: correction_mask_total_entries
+  value: 31
+  units: count
+  source: src/sqd_ordering/mask.py
+  computation: "total retained entries per repetition under the correct mask"
+  tolerance: count
+  tier: 1
+- id: correction_spearman_that_missed_it
+  value: 0.993
+  units: dimensionless
+  source: notes/PROGRESS.md
+  computation: "Spearman correlation between the two (one buggy) mask models' retained_J, that failed to catch the omission"
+  tolerance: correlation
+  tier: 3
+
+# ===================== AMENDMENT 2 -- FINDING 4 CLAIMS (per your list) ====
+- id: finding4_t2_max_rel_diff
+  value: 1e-10
+  units: dimensionless
+  source: verification/TASK_A_FINDING4.md
+  computation: "max element-wise relative difference in t2L between the cached H10 R=1.6 reference and an independently-rebuilt one (measured 7.6e-10, reported to order of magnitude)"
+  tolerance: rebuilt_reference
+  tier: 3
+- id: finding4_aggregate_agreement
+  value: 1e-14
+  units: Ha
+  source: cache/h10_R1.6/reference.npz
+  computation: "aggregate CASCI-energy agreement between cached and independently-rebuilt references, for contrast with finding4_t2_max_rel_diff"
+  tolerance: exact_energy_ha
+  tier: 1
+- id: finding4_strings_swap_count
+  value: "4/15"
+  units: count
+  source: verification/task_a1_marginal_dump.py
+  computation: "top-15 alpha-marginal strings differing between cached and fresh references, H10 identity default anchors"
+  tolerance: count
+  tier: 3
+- id: finding4_rank_jump
+  value: "14 -> 8"
+  units: rank
+  source: verification/task_a1_marginal_dump.py
+  computation: "largest single-determinant rank change between the two references (0000111101)"
+  tolerance: count
+  tier: 3
+- id: finding4_probability_shift
+  value: 0.0047
+  units: dimensionless
+  source: verification/task_a1_marginal_dump.py
+  computation: "max |fractional count difference| for that determinant, cached vs fresh, at 2e6 shots"
+  tolerance: rebuilt_reference
+  tier: 3
+- id: finding4_1e14_flip_rate
+  value: "5/5"
+  units: count
+  source: verification/task_a3_h10_perturbation_results.csv
+  computation: "perturbation seeds landing away from the cached baseline at the smallest tested noise level (1e-14 relative)"
+  tolerance: count
+  tier: 3
+- id: finding4_h10_baseline_reproduction
+  value: "0/20"
+  units: count
+  source: verification/task_a3_h10_perturbation_results.csv
+  computation: "H10 perturbed draws reproducing the unperturbed baseline exactly, across all noise levels"
+  tolerance: count
+  tier: 3
+- id: finding4_n2_baseline_reproduction
+  value: "9/20"
+  units: count
+  source: verification/task_a4_n2_perturbation_results.csv
+  computation: "N2 perturbed draws reproducing the unperturbed baseline exactly, across all noise levels"
+  tolerance: count
+  tier: 3
+- id: finding4_n2_vs_h10_spread_ratio
+  value: 3.5
+  units: dimensionless
+  source: "verification/task_a3_h10_perturbation_results.csv, verification/task_a4_n2_perturbation_results.csv"
+  computation: "H10's perturbation-induced err_mHa spread (~131 mHa) / N2's (~37 mHa)"
+  tolerance: rebuilt_reference
+  tier: 3
+- id: finding4_shots_no_effect
+  value: true
+  units: exact_bit
+  source: verification/task_a5_shot_sweep_results.csv
+  computation: "H10 fresh-reference err_mHa is bit-identical (373.611432) at 2e6, 8e6 and 32e6 shots"
+  tolerance: exact_bit
+  tier: 2

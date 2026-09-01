@@ -32,6 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "experiments"))
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import unified_run as U  # noqa: E402  (cached reference load; safe on import)
 import run_ordering_pipeline as R  # noqa: E402  (safe on import, no side effects)

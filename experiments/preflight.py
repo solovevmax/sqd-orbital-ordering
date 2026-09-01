@@ -69,6 +69,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 OUTDIR = Path(__file__).resolve().parent / "outputs" / "preflight"
 OUTDIR.mkdir(parents=True, exist_ok=True)

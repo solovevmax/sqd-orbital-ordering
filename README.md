@@ -1,161 +1,165 @@
-# SQD Orbital Ordering
+# Orbital Layout in Heavy-Hex LUCJ Sampling for SQD
 
-Python pipeline for constructing LUCJ ansatz circuits, sampling them, and
-exporting inputs for sample-based quantum diagonalisation (SQD). Work
-carried out during a summer internship at RIKEN R-CCS with Prof. Seiji
+In sample-based quantum diagonalization (SQD), the LUCJ circuit acts as a
+sampler whose Jastrow couplings are truncated by a heavy-hex locality mask.
+Which couplings survive depends entirely on the orbital-to-qubit assignment —
+a convention inherited from the active-space construction and, as far as we
+can find, never varied in the literature.
+
+**This repository shows that the assignment changes the SQD subspace error by
+up to a factor of eight at fixed budget**, identifies the mechanism (subspace
+capture), decomposes the mask into two separable design levers, and provides a
+cheap shortlist rule that reaches 0.2% of optimal on held-out chains.
+
+Work carried out during a summer internship at RIKEN R-CCS with Prof. Seiji
 Yunoki and Dr Tomonori Shirakawa.
 
-The LUCJ ansatz used for SQD sampling is subject to a hardware locality
-mask: on a heavy-hex qubit topology, only same-spin nearest-neighbour
-Jastrow terms and a small set of on-site opposite-spin ("anchor") terms
-survive without expensive SWAP networks. This mask exposes two separable
-levers — which orbitals sit next to each other (same-spin *ordering*) and
-which orbitals anchor the opposite-spin terms (anchor *selection*) — and
-this project asks whether either one measurably changes SQD accuracy, and
-whether that effect can be predicted cheaply enough to be useful. The
-answer is a mechanism, not a rule: subspace capture (how much of the exact
-wavefunction's weight the sampled determinants span) explains SQD error
-almost everywhere tested (rho between -0.88 and -0.98, H10 and N2, every
-same-spin ordering examined), and anchor selection genuinely dominates
-ordering (a 234 mHa range across 120 anchor choices at fixed ordering on
-H10, transferring to N2 with an even stronger ansatz-level correlation).
-But no cheap score — including a purpose-built, pre-declared family of
-five chain-aware candidates tested against a chain-invariant control — has
-been found that reliably turns this into a selection rule: the control's
-own correlation with outcome degrades from -0.850 to -0.255 across
-same-spin chains, and generalises no better on 12 held-out chains tested
-out of sample (worst-case rho even flips sign at the ansatz level). See
-`experiments/README.md` for the full chain of experiments that established
-this, in order.
+---
 
-## Reproduce the RIKEN benchmark
+## Reproduce the group benchmark
 
-The `sbd` library ships its own N2/6-31g benchmark case
-(`sbd/data/n2/README.md`); the 1.0e-4 alpha-bitstring threshold reproduces
-a known reference energy to 12 significant figures. Requires `sbd` built
-(see Install, below) and `SBD_BIN` pointing at the compiled binary.
+```bash
+conda env create -f environment.yml && conda activate sqd
+export SBD_BIN=sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
+mpirun -n 1 "$SBD_BIN" \
+  --fcidump sbd/data/n2/fcidump.txt \
+  --adetfile sbd/data/n2/1em4-alpha.txt \
+  --bdetfile sbd/data/n2/1em4-alpha.txt \
+  --bit_length 20 \
+  --method 0 --iteration 200 --tolerance 1e-10 \
+  --carryover_type 0 --shuffle 0 --init 0 \
+  --adet_comm_size 1 --bdet_comm_size 1 --task_comm_size 1
+```
 
-    export SBD_BIN=sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
-    mpirun -n 1 "$SBD_BIN" \
-      --fcidump sbd/data/n2/fcidump.txt \
-      --adetfile sbd/data/n2/1em4-alpha.txt \
-      --bdetfile sbd/data/n2/1em4-alpha.txt \
-      --bit_length 20 \
-      --method 0 --iteration 200 --tolerance 1e-10 \
-      --carryover_type 0 --shuffle 0 --init 0 \
-      --adet_comm_size 1 --bdet_comm_size 1 --task_comm_size 1
+Expected output:
 
-Expected output (last lines; ~2-11 minutes depending on machine load):
+```
+Energy = -109.0483526946501
+Sample-based diagonalization: Energy = -109.0483526946501
+```
 
-    Energy = -109.0483526946501
-    Sample-based diagonalization: Energy = -109.0483526946501
+Published value: `-109.04835269 Ha`. Agreement to twelve significant figures.
+Runtime approximately 4 minutes on Apple M5 (arm64); the README previously
+quoted 2-11 minutes depending on machine load.
 
 This is `sbd` alone, with no dependency on this project's Python code — it
-confirms the external library and the FCIDUMP/determinant-file format
-before debugging anything upstream.
+confirms the external library and the FCIDUMP/determinant-file format before
+debugging anything upstream.
+
+---
 
 ## Key results
 
-| Result | Figure | Experiment | Data |
+| Result | Value | Where |
+|---|---|---|
+| Layout effect, N₂ CAS(6,10) | 21.65 → 173.23 mHa across 149 layouts | [`outputs/unified/results.csv`](outputs/unified/results.csv) |
+| Layout effect, H10 CAS(10,10) | 168.67 → 454.89 mHa across 50 layouts | [h10_baseline](experiments/outputs/h10_baseline_R1.6/README.md) |
+| Mechanism: ρ(capture, error) | −0.88 to −0.98 across 21 chains, 3 systems | [transmission](experiments/outputs/transmission/README.md), [tm_transfer](experiments/outputs/tm_transfer/README.md) |
+| Anchor lever | 234 mHa from 120 choices vs 286 mHa from 10! | [anchor_decomposition](experiments/outputs/anchor_decomposition_R1.6/README.md), [h10_baseline](experiments/outputs/h10_baseline_R1.6/README.md) |
+| Shortlist rule, held out | median regret 0.002, p90 0.002 (random: 0.181 / 0.621) | [chain_aware_v3](experiments/outputs/chain_aware_v3/README.md) |
+| Circuit audit | better anchors need *fewer* two-qubit gates | [transpilation_audit](experiments/outputs/transpilation_audit/README.md) |
+
+See [`experiments/README.md`](experiments/README.md) for the full chain of
+experiments that established this, in order.
+
+---
+
+## Systems
+
+| | N₂ | H10 chain | Cr₂ |
 |---|---|---|---|
-| N2 same-spin ordering spread (149 random orderings, R=1.55) | 21.65-173.23 mHa | `unified_run.py` | `outputs/unified/results.csv` |
-| H10 same-spin baseline spread (50 random orderings, default anchor) | 286.23 mHa | [h10_baseline](experiments/outputs/h10_baseline_R1.6/) | `h10_baseline_results.csv` |
-| H10 anchor-selection range (120 triples, fixed identity ordering) | 234.10 mHa | [anchor_decomposition](experiments/outputs/anchor_decomposition_R1.6/) | `c1_all120_identity.csv` |
-| Anchor-optimised compression, same-spin spread / best-anchor spread | 4.8x at n=8, 3.15x at n=20 | [g1_lite](experiments/outputs/g1_lite/), [chain_aware](experiments/outputs/chain_aware/) | `g1_summary.csv`, `step2_b35_new12.csv` |
-| Subspace capture -> SQD error, worst case across every chain tested | rho = -0.88 to -0.98 | [transmission](experiments/outputs/transmission/), [chain_aware](experiments/outputs/chain_aware/) | `all_evaluations.csv`, `phaseB_b3d_links.csv` |
+| Basis | 6-31G | STO-6G | cc-pVDZ |
+| Active space | CAS(6,10) | CAS(10,10) | CAS(12,12) |
+| Qubits | 20 | 20 | 24 |
+| CI dimension | 14,400 | 63,504 | 853,776 |
+| Orbitals | canonical | block-Boys | block-Boys |
 
-## Repository layout
+All three are exactly diagonalisable, so every error is measured against an
+exact reference.
 
-    README.md              this file
-    environment.yml         conda/pip environment
-    run_ordering_pipeline.py  H10 pipeline (mechanism B): mask -> sample -> sbd, stage0-stage3 CLI
-    unified_run.py          N2 pipeline (mechanism A): self-contained, same mask, single consolidated run
-    src/sqd_ordering/       shared library: mask.py, scores.py, sampling.py, sbd.py
-    experiments/            one directory per experiment, each with its own README and CSVs
-    cache/                  cached PySCF/CCSD reference data (FCIDUMP, CI vector), sha256-recorded in each experiment's metadata.json
-    outputs/                generated circuits, bitstrings, and early diagnostic runs (mechanism-A/B validation, H2 smoke tests)
-    results/figures/        publication figure set, generated by experiments/figures.py
-    notes/                  PROGRESS.md, the running lab notebook / decision log
-    tests/                  pytest suite (mechanism A/B mask equivalence)
-    archive/                superseded scripts and pre-project development artefacts, documented in archive/README.md
-    sbd/                    the external sbd library (not modified by this project)
-    sbd-build-notes/        build configuration for sbd on macOS/Apple Silicon
+---
 
-## Bitstring convention
+## Layout
 
-Qiskit writes measurement strings with qubit 0 as the **rightmost** character.
-ffsim maps alpha spin-orbitals to qubits `0..norb-1` and beta to
-`norb..2*norb-1`. sbd expects each determinant with the **rightmost bit
-corresponding to orbital 1**.
+| Directory | Contents |
+|---|---|
+| `src/sqd_ordering/` | The library: mask model, scores, sampling, sbd wrapper |
+| `scripts/` | Pipeline drivers (`run_ordering_pipeline.py` — H10, mechanism B; `unified_run.py` — N2, mechanism A) |
+| `experiments/` | One directory per experiment, each with its own README, protocol and results |
+| `cache/` | Cached reference artefacts (PySCF/CCSD/CASCI, FCIDUMP, CI vector), sha256-recorded in each experiment's `metadata.json` |
+| `outputs/` | Generated circuits and bitstrings still read by the pipeline drivers (`outputs/unified/`) |
+| `results/` | Figures and summary tables (`results/figures/`, generated by `experiments/figures.py`) |
+| `notes/` | Progress log (`PROGRESS.md`) and `sbd` build configuration |
+| `tests/` | `pytest tests/` |
+| `archive/` | Superseded work, retained with notes (`archive/README.md`) |
+| `sbd/` | Shirakawa's selected-basis diagonalization code, used **unmodified**, vendored and gitignored |
 
-These conventions coincide, so the required operation is a **split, not a
-reversal**:
+---
 
-    alpha = full_bitstring[-norb:]    # rightmost norb characters
-    beta  = full_bitstring[:norb]     # leftmost norb characters
+## Conventions that matter
 
-## Mandatory parameter choices
+**Bitstrings.** Qiskit writes qubit 0 rightmost; ffsim maps α spin-orbitals to
+qubits 0..N−1 and β to N..2N−1; sbd expects the rightmost bit to be orbital 1.
+These coincide — the required operation is a **split, not a reversal**.
 
-Verified empirically; changing these breaks the pipeline:
+**Mandatory parameters.** Full-rank double factorisation (`n_reps=None`): at
+low rank the ansatz collapses toward Hartree–Fock, giving 160 mHa error on H10
+where full rank gives 1.2 mHa. The compressed-factorisation optimiser is
+disabled — it worsens energies and introduces nondeterminism.
 
-- **`n_reps=None`** — full-rank double factorisation. `n_reps` is the rank of
-  the factorisation of the t2 amplitudes; at low rank the ansatz collapses back
-  to Hartree-Fock. For H10/STO-3G, `n_reps=2` gives 160 mHa error against CCSD
-  while `n_reps=None` gives 1.2 mHa.
-- **`optimize=False`** — the compressed-factorisation optimiser has been
-  observed to worsen energies substantially and introduces nondeterminism that
-  would confound ordering comparisons.
+**Reproducibility.** Reference data (RHF, CCSD, CASCI, FCIDUMP) is computed
+once and cached, with OMP/MKL/OpenBLAS pinned to one thread. Recomputing
+across processes produced FCIDUMPs differing enough to shift energies by
+8–17 mHa, because determinant selection at tight budgets is near-degenerate.
 
-## Install
+---
 
-    conda env create -f environment.yml
-    conda activate sqd
+## Reproducing an experiment
 
-Building `sbd` (not part of this repository's own history — see
-`sbd/README.md` and `sbd/docs/` for the library's own documentation):
+Each directory under `experiments/outputs/` contains a README stating the
+question, the protocol, and the headline numbers, plus a `metadata.json`
+recording the git commit, artefact SHA-256 hashes, seeds, shot counts and
+wall time.
 
-- **macOS / Apple Silicon**: copy `sbd-build-notes/Configuration.macos-arm64`
-  to `sbd/apps/chemistry_tpb_selected_basis_diagonalization/Configuration`
-  and run `make` in that directory (conda `mpicxx`, OpenMP, macOS
-  Accelerate for BLAS/LAPACK).
-- **Fugaku (A64FX)**: `sbd/cmake/toolchains/fugaku-llvm.cmake` (Fujitsu MPI
-  `mpiclang++` wrapping `aarch64-linux-gnu-clang++`, LLVM OpenMP, OpenBLAS)
-  — a CMake toolchain file, bundled with `sbd` itself; use it with `sbd`'s
-  own CMake build (`sbd/docs/development-guide.md`).
+```bash
+export SBD_BIN=/path/to/sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
+python experiments/h10_baseline.py
+```
 
-Either way, set `SBD_BIN` to the resulting binary before running anything
-in this repository:
-
-    export SBD_BIN=/path/to/sbd/apps/chemistry_tpb_selected_basis_diagonalization/diag
-
-## Tests
-
-    pytest tests/
-
-Checks that mechanism A (`unified_run.py`) and mechanism B
-(`run_ordering_pipeline.py`) still build entrywise-identical operators from
-the shared `src/sqd_ordering/mask.py`, across 20 random permutations.
+---
 
 ## Known issues and corrections
 
-- **H10 results were withdrawn once, 2026-08-25, and re-run.**
-  `run_ordering_pipeline.py`'s original same-spin mask omitted the
-  same-spin diagonal `(p, p)` Jastrow entries that `unified_run.py`'s N2
-  mask always retained — a physically wrong mask, not an alternative one
-  (see `notes/PROGRESS.md`, "Voided results"). Fixed by extracting the
-  mask logic to the single shared `src/sqd_ordering/mask.py`; every H10
-  result in this repository postdates that fix (commit `b84ff9f` onward).
-  N2 was unaffected throughout.
-- Full detail, including why the fix's own validation guard (a Spearman
-  correlation check) did not initially catch the bug, is in
-  `notes/PROGRESS.md`.
+Three errors were found and corrected during this work. All are documented in
+[`notes/PROGRESS.md`](notes/PROGRESS.md).
 
-## References
+1. **Mask diagonal omitted** — a second mask implementation dropped the
+   same-spin `(p,p)` terms, 10 of 31 retained entries per repetition. All H10
+   results before 25 Aug 2026 were withdrawn and re-measured. N₂ was
+   unaffected. The validation that missed it compared the two models by
+   Spearman correlation, which is structurally blind to the additive offset
+   the omission creates.
+2. **Compression factor** — an eight-chain estimate excluded the incumbent
+   anchor triple from the candidate set at 6 of 8 chains. Recomputed over
+   twenty chains with the default always included.
+3. **Sign convention in score comparison** — silently substituted each score's
+   best chain for its worst, producing two false "beats S0" verdicts.
+   Per-chain tables and regret figures were unaffected.
 
-1. J. Robledo-Moreno *et al.*, *Sci. Adv.* **11**, eadu9991 (2025);
-   arXiv:2405.05068 — the SQD method.
-2. T. Shirakawa *et al.*, arXiv:2511.00224 (2025) — closed-loop SQD at full
-   scale on Fugaku.
-3. M. Motta *et al.*, *Chem. Sci.* (2023) — the LUCJ ansatz.
-4. T. Shirakawa, `sbd`: library for selected basis diagonalisation,
-   https://github.com/r-ccs-cms/sbd
+---
+
+## Tests
+
+```bash
+pytest tests/
+```
+
+Includes a regression test over 20 random permutations guarding the shared
+mask model against the divergence described above.
+
+---
+
+## Citation
+
+The `sbd` solver is Dr Tomonori Shirakawa's, used unmodified. If you use it,
+cite [arXiv:2511.00224](https://arxiv.org/abs/2511.00224).

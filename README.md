@@ -11,9 +11,6 @@ up to a factor of eight at fixed budget**, identifies the mechanism (subspace
 capture), decomposes the mask into two separable design levers, and provides a
 cheap shortlist rule that reaches 0.2% of optimal on held-out chains.
 
-Work carried out during a summer internship at RIKEN R-CCS with Prof. Seiji
-Yunoki and Dr Tomonori Shirakawa.
-
 ---
 
 ## Reproduce the group benchmark
@@ -39,8 +36,7 @@ Sample-based diagonalization: Energy = -109.0483526946501
 ```
 
 Published value: `-109.04835269 Ha`. Agreement to twelve significant figures.
-Runtime approximately 4 minutes on Apple M5 (arm64); the README previously
-quoted 2-11 minutes depending on machine load.
+Runtime approximately 4 minutes on Apple M5 (arm64).
 
 This is `sbd` alone, with no dependency on this project's Python code — it
 confirms the external library and the FCIDUMP/determinant-file format before

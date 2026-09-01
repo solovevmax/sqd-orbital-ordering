@@ -107,6 +107,25 @@ disabled — it worsens energies and introduces nondeterminism.
 once and cached, with OMP/MKL/OpenBLAS pinned to one thread. Recomputing
 across processes produced FCIDUMPs differing enough to shift energies by
 8–17 mHa, because determinant selection at tight budgets is near-degenerate.
+`environment.yml` is for general use; `environment.lock.txt` (+
+`environment.lock-pip.txt`) pins the exact package builds — including the
+BLAS/LAPACK build specifically — used to generate every cached reference in
+this repository, since two environments satisfying `environment.yml` with
+matching version numbers were found to disagree at the ~1e-10 relative
+level in CCSD amplitude tensor elements (`libblas`/`liblapack` build 9 vs.
+10 of the same nominal version). **The lockfile closes that specific gap
+but has not been shown sufficient on its own**: rebuilding from the
+lockfile in a fresh environment reproduced the cached H10 R=1.6 reference
+bit-for-bit once, but repeat rebuilds — including in the original
+environment that produced the cache — later gave a different, though
+internally self-consistent, result, with the environment's package state
+provably unchanged throughout. The mechanism for that second effect is not
+established; see `verification/FIX1_LOCKFILE_VERIFICATION.md` and
+`verification/TASK_A_FINDING4.md` for the full account. Treat any
+individually-quoted per-layout number at a near-degenerate configuration
+(anywhere the selection-boundary marginal ratio is close to 1) as
+reproducible from the *shipped* cached reference, not from a from-scratch
+rebuild, lockfile or not.
 
 ---
 

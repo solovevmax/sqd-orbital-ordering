@@ -274,3 +274,36 @@ Script: `task_amendment3_thread_determinism.py` (per-run worker) — the
 driver that invoked it as 10 separate subprocesses was scratch shell script,
 not committed; the worker plus this write-up are enough to reproduce the
 comparison.
+
+## Correction, found during FIX 1 verification: Amendment 3's conclusion above is incomplete
+
+While verifying the lockfile fix (see `FIX1_LOCKFILE_VERIFICATION.md`), the
+`sqd` environment — the exact same one that gave 10/10 bit-identical,
+cache-matching builds above — was re-tested with 8 more independent
+builds and gave a **different** result, consistently: `E_CASCI =
+-4.966071088325831`, not the cached `-4.966071088325821`. Not
+intermittent — 8/8 agreed with each other, just not with the earlier 10/10
+or the cache.
+
+`conda-meta/history` for `sqd` confirms no package was added, removed, or
+changed at any point during this session (its last modification predates
+this session by weeks) — so this is not package/BLAS-build drift of the
+kind identified above. Something about **machine or process state that
+changes over time within one long-running session** is producing a
+discrete, and evidently persistent-once-triggered, shift in
+floating-point outcome, even with the environment provably unchanged and
+thread counts pinned identically both times.
+
+I do not have a confirmed root cause for this second-order effect (candidates:
+Apple Silicon P-core/E-core scheduling assignment, ASLR-dependent memory
+alignment interacting with a SIMD-dispatch code path, thermal/frequency
+state after hours of sustained computation — none confirmed). What is
+established, empirically, is that **environment pinning alone (Amendment
+3's original conclusion) is not sufficient to guarantee bit-reproducibility
+of this reference build, even within the single environment that produced
+the shipped cache.** This revises Amendment 3's practical conclusion
+somewhere between your two original hypotheses: not simple thread-count
+nondeterminism, not purely environment/BLAS-build drift either — there is
+a real, currently unexplained, process/machine-state component on top of
+the confirmed environment-drift one. See `FIX1_LOCKFILE_VERIFICATION.md`
+for the full account and its implications for the lockfile fix.

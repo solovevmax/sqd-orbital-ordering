@@ -1,0 +1,3 @@
+tag,stored,computed,diff,tol,ok,wall_s,note
+n2_unmasked_bitidentical_across_4,True,True,,,True,0.0,"[-108.8236445639776, -108.8236445639776, -108.8236445639776, -108.8236445639776]"
+cr2_identity_default,240.79318115809656,240.79318115809656,0.0,0.001,True,952.7918329238892,

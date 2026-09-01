@@ -174,6 +174,25 @@ mask model against the divergence described above.
 
 ---
 
+## Verification
+
+Every number in the report and the presentation was audited against the raw
+data — independently where possible, re-running the actual pipeline where
+not. Full account, including every discrepancy found and how it was
+resolved, in `verification/REPORT.md`.
+
+```bash
+make verify        # Tiers 0+1: independent recomputation from raw CSVs and
+                    # cached references, no new sampling, a few seconds
+make verify-tier2  # re-run the real sampling+sbd pipeline for a declared
+                    # sample of evaluations, ~25 minutes (one Cr2 evaluation
+                    # dominates at ~16 min)
+make verify-tier3  # cold start: fresh clone, fresh environment, from-scratch
+                    # sbd build -- see verification/COLD_START.md first
+```
+
+---
+
 ## Citation
 
 The `sbd` solver is Dr Tomonori Shirakawa's, used unmodified. If you use it,

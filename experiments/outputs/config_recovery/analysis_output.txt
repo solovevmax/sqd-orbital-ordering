@@ -1,0 +1,124 @@
+==============================================================================
+A1 -- spread across the 8 permutation layouts, iteration 0 to 5
+==============================================================================
+  it=0: range=[168.6667, 454.8933]  spread=286.2266 mHa  ratio=2.697x
+  it=1: range=[40.8282, 139.4925]  spread=98.6643 mHa  ratio=3.417x
+  it=2: range=[33.3568, 40.8282]  spread=7.4715 mHa  ratio=1.224x
+  it=3: range=[33.3568, 40.8282]  spread=7.4715 mHa  ratio=1.224x
+  it=4: range=[33.3568, 40.8282]  spread=7.4715 mHa  ratio=1.224x
+  it=5: range=[33.3568, 40.8282]  spread=7.4715 mHa  ratio=1.224x
+
+  spread(it0)=286.2266 mHa -> spread(it5)=7.4715 mHa  (narrows by 97.39%, factor 38.3x)
+
+==============================================================================
+A2 -- rank stability: Kendall tau, iteration 0 ranking vs each subsequent
+==============================================================================
+  tau(it0, it1) = 0.9092  (p=0.0018)
+  tau(it0, it2) = -0.3669  (p=0.2498)
+  tau(it0, it3) = -0.0714  (p=0.8273)
+  tau(it0, it4) = -0.0714  (p=0.8273)
+  tau(it0, it5) = -0.0714  (p=0.8273)
+
+==============================================================================
+A3 -- convergence: same energy or different, at iteration 5
+==============================================================================
+label
+identity            40.828243
+physical            40.828243
+physical_reverse    40.828243
+rand030             40.828243
+rand029             40.828243
+newchain03          40.828243
+newchain08          40.828243
+newchain10          33.356761
+
+  distinct iteration-5 energies (rounded to 1e-4 mHa): 2 of 8
+  seed noise at 2e6 shots (established elsewhere in this project): 0.0 mHa (bit-identical)
+  7/8 layouts converge to the identical energy (40.828243 mHa); outlier(s): {'newchain10': 33.35676099945406}
+
+==============================================================================
+A4 -- rho(captured, err_mHa) across the 8 layouts, at each iteration
+==============================================================================
+  it=0: rho=-0.9762  p=0.0000  (n=8)
+  it=1: rho=-1.0000  p=0.0000  (n=8)
+  it=2: rho=-1.0000  p=0.0000  (n=8)
+  it=3: rho=-1.0000  p=0.0000  (n=8)
+  it=4: rho=-1.0000  p=0.0000  (n=8)
+  it=5: rho=-1.0000  p=0.0000  (n=8)
+
+==============================================================================
+A5 -- anchor axis: default, best(0,1,2), no-ab -- same energy or different?
+==============================================================================
+iteration                 0           1          2          3          4          5
+label                                                                              
+anchor_best_012  224.598900   50.679093  29.201831  40.828243  40.828243  40.828243
+anchor_default   300.319194   80.858350  40.828243  40.828243  40.828243  40.828243
+anchor_noab      458.699662  157.383512  40.828243  40.828243  40.828243  40.828243
+
+==============================================================================
+A3b/Amendment3 -- spread of DIMENSIONS across layouts at each iteration
+==============================================================================
+  it=0: dim range=[225, 225]  (dim_a range=[15,15])
+  it=1: dim range=[1764, 9216]  (dim_a range=[42,96])
+  it=2: dim range=[9216, 11664]  (dim_a range=[96,108])
+  it=3: dim range=[9216, 11025]  (dim_a range=[96,105])
+  it=4: dim range=[9216, 11025]  (dim_a range=[96,105])
+  it=5: dim range=[9216, 11025]  (dim_a range=[96,105])
+
+==============================================================================
+Amendment 3 -- traced fraction (original sample) vs iteration, permutation arm
+==============================================================================
+iteration           0         1         2         3         4         5
+label                                                                  
+identity          1.0  0.212121  0.156250  0.156250  0.156250  0.156250
+physical          1.0  0.309524  0.156250  0.156250  0.156250  0.156250
+physical_reverse  1.0  0.178571  0.156250  0.156250  0.156250  0.156250
+rand030           1.0  0.156250  0.156250  0.156250  0.156250  0.156250
+rand029           1.0  0.192982  0.120370  0.135417  0.135417  0.135417
+newchain03        1.0  0.156250  0.156250  0.156250  0.156250  0.156250
+newchain08        1.0  0.178571  0.156250  0.156250  0.156250  0.156250
+newchain10        1.0  0.181818  0.142857  0.142857  0.142857  0.142857
+
+  mean traced fraction across 8 layouts, by iteration:
+iteration
+0    1.000000
+1    0.195761
+2    0.150091
+3    0.151972
+4    0.151972
+5    0.151972
+
+==============================================================================
+A6 -- cost: wall time and sbd-call count per layout, 6 iterations (0-5)
+==============================================================================
+                  total_wall_s  n_calls
+label                                  
+anchor_best_012      15.581867        6
+anchor_default       13.798064        6
+anchor_noab          13.377403        6
+identity             13.888262        6
+newchain03           14.940992        6
+newchain08           14.390589        6
+newchain10           16.082478        6
+physical             13.427244        6
+physical_reverse     14.313430        6
+rand029              14.575311        6
+rand030              14.958730        6
+
+  total wall time, all 11 trajectories: 159.3s (2.66 min, sbd calls only, excludes Aer sampling ~35s/layout)
+
+==============================================================================
+Amendment 4 -- did the pre-registered prediction hold?
+==============================================================================
+Prediction: layout influence decays roughly in proportion to the sampled
+determinants' declining share of the pool (traced fraction).
+
+  iteration | mean traced fraction | spread (mHa)
+          0 | 1.0000              | 286.2266
+          1 | 0.1958              | 98.6643
+          2 | 0.1501              | 7.4715
+          3 | 0.1520              | 7.4715
+          4 | 0.1520              | 7.4715
+          5 | 0.1520              | 7.4715
+
+  Pearson correlation, traced-fraction vs spread, across the 6 iterations: 0.9614

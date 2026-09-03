@@ -1,0 +1,34 @@
+{
+  "part": "config_recovery",
+  "git_commit": "f8f517b40d7a4580c5b4eae28c40af118e0080fc",
+  "system": "H10 R=1.6 CAS(10,10) STO-6G, cache/h10_R1.6",
+  "shots": 2000000,
+  "seed": 2026,
+  "budget0": 15,
+  "carryover_type": 3,
+  "carryover_threshold": "1e-2",
+  "n_iterations": 5,
+  "n_trajectories": 11,
+  "arms": {
+    "anchor_axis": 3,
+    "permutation": 8
+  },
+  "held_out_chains_seed": 101,
+  "held_out_chains": [
+    "newchain03",
+    "newchain08",
+    "newchain10"
+  ],
+  "universal_fixed_point": {
+    "err_mHa": 40.828243,
+    "dim": 9216,
+    "n_trajectories": 10
+  },
+  "outlier": {
+    "label": "newchain10",
+    "err_mHa": 33.356761,
+    "dim": 11025
+  },
+  "total_wall_min": 9.3,
+  "recovery_results_csv_sha256": "70057a223a8a759b"
+}

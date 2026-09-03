@@ -24,6 +24,7 @@ order below; later experiments build on earlier ones' cached data.
 | [transpilation_audit](outputs/transpilation_audit/README.md) | `transpilation_audit.py` | Are the fixed-resource comparisons actually resource-neutral on real heavy-hex hardware? |
 | [chain_aware_v3](outputs/chain_aware_v3/README.md) | `chain_aware_v3.py` | Tie-break, interface score, and shortlist-recall reframing -- does anything beat S0 chain-by-chain? |
 | [n2_seed_stability](outputs/n2_seed_stability/README.md) | none (pre-restructuring dataset) | Is the N2 ordering effect signal or seed noise, at 5 seeds? |
+| [config_recovery](outputs/config_recovery/README.md) | `config_recovery.py` | Does the layout/anchor effect survive iterative SQD (self-consistent configuration recovery), or is it a first-iteration artefact? |
 
 `figures.py` generates the publication figure set in `results/figures/`
 from several of the CSVs above; it is not its own experiment.
